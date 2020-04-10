@@ -4,6 +4,7 @@ FluoJupyter is a Jupyter Notebook to analyze X-Ray Fluorescence (XRF) experiment
 The notebook should be first set up by an Expert following the instructions in the "Expert" section. User can then follow the guidelines in the "User" section to start using the notebook.
 
 ## User
+[![image](https://imgur.com/NeXYpj8.png)](https://www.youtube.com/watch?v=d7EmOnYjqbk)
 
 ### Getting Started
 1. Once the notebook is open, run the first cell with the parameters starting with:
@@ -73,8 +74,9 @@ To generate the cells for the next sample, click on the button at the bottom of 
 2. To export the notebook in html, first click in the menu Widgets/Save Notebook Widget State, then File/Download as/html.
 
 ## Expert
-[![image](https://imgur.com/a7eXXXk)](https://www.youtube.com/watch?v=O-ULCnkTFYU)
-[Imgur](https://i.imgur.com/a7eXXXk.png)
+[![image](https://imgur.com/a7eXXXk.png)](https://www.youtube.com/watch?v=O-ULCnkTFYU)
+[![image](https://imgur.com/ypOYCvq.png)](https://www.youtube.com/watch?v=KkACazH16nw)
+
 ### Getting Started
 
 Copy the files FluoJupyter.ipynb, FluoJupyter_functions.py, PyNexus.py, f-si, and DefaultPeaks.csv on the local folder where the nxs files are. The nxs files should contain 'Fluo' in their name. Note that the notebook does not work with JupyterLab in its current version.
