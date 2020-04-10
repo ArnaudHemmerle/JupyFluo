@@ -20,7 +20,7 @@ print_version()
 # Run this cell
 generate_cells_on_click()
 ```
-3. Click on the button.
+3. Click on the button 'Click me to create the next cells!'
 
 ### Enter the information on the experiment
 1. Double-click on the text cells to enter your sample name, and add relevant description.
