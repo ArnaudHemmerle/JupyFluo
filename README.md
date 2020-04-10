@@ -73,8 +73,8 @@ To generate the cells for the next sample, click on the button at the bottom of 
 2. To export the notebook in html, first click in the menu Widgets/Save Notebook Widget State, then File/Download as/html.
 
 ## Expert
-[![Expert 01](https://imgur.com/a/VX8WjbC)](https://www.youtube.com/watch?v=O-ULCnkTFYU)
-
+[![image](https://imgur.com/a7eXXXk)](https://www.youtube.com/watch?v=O-ULCnkTFYU)
+[Imgur](https://i.imgur.com/a7eXXXk.png)
 ### Getting Started
 
 Copy the files FluoJupyter.ipynb, FluoJupyter_functions.py, PyNexus.py, f-si, and DefaultPeaks.csv on the local folder where the nxs files are. The nxs files should contain 'Fluo' in their name. Note that the notebook does not work with JupyterLab in its current version.
