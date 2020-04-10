@@ -73,8 +73,7 @@ To generate the cells for the next sample, click on the button at the bottom of 
 2. To export the notebook in html, first click in the menu Widgets/Save Notebook Widget State, then File/Download as/html.
 
 ## Expert
-
-[](https://img.youtube.com/vi/O-ULCnkTFYU/0.jpg)](https://www.youtube.com/watch?v=O-ULCnkTFYU)
+[(https://img.youtube.com/vi/ULCnkTFYU/0.jpg)](https://www.youtube.com/watch?v=ULCnkTFYU)
 
 ### Getting Started
 
