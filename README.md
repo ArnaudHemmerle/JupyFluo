@@ -87,8 +87,8 @@ dparams_fit['fG'] = 1.5
 dparams_fit['sfa0'] = 1e-10
 dparams_fit['sfa1'] = 1e-5
 ```
-2) 
-a) Update the parameter list_isfit:
+2) Fit 'noise' and 'fG'
+a) Update the parameter 'list_isfit':
 ```
 dparams_general['list_isfit'] = ['sl','ct', 'noise', 'fG']
 ```
@@ -101,9 +101,44 @@ b) When the fit is done, get the average results for 'noise' and 'fG' using the 
 print(np.mean(expmt.dparams_list['noise_list']))
 print(np.mean(expmt.dparams_list['fG_list']))
 ```
-c) 
+c) Update the parameters 'noise' and 'fG' in the first cell:
+```
+dparams_fit['noise'] = 0.11135974573713625
+dparams_fit['fG'] = 1.4326013905627302
+```
+3) Repeat step 2 for 'tfb0' with: 
+```
+dparams_general['list_isfit'] = ['sl','ct','tfb0']
+```
+
+4) Repeat step 2 for 'twc0' with: 
+```
+dparams_general['list_isfit'] = ['sl','ct','twc0']
+```
+
+5) Repeat step 2 for 'twc1' with: 
+```
+dparams_general['list_isfit'] = ['sl','ct','twc1']
+```
+
+6) Repeat step 2 for 'sfa0' and 'sfa1' with: 
+```
+dparams_general['list_isfit'] = ['sl','ct','sfa0', 'sfa1']
+```
+
+7) Repeat step 2 for 'sl','ct', 'noise', 'fG' with: 
+```
+dparams_general['list_isfit'] = ['sl','ct', 'noise', 'fG']
+```
+
+### Finishing
+It seems better to keep dparams_general['list_isfit'] = ['sl','ct', 'noise', 'fG'] for the User, especially if the intensity of the peaks varies significantly during an experiment.
+
+Delete the cells you have generated, and the file is ready for the User.
 
 ### Prerequisites
+c) Update the parameters 'noise' and 'fG' in the first cell:
+
 
 What things you need to install the software and how to install them
 
@@ -111,18 +146,6 @@ What things you need to install the software and how to install them
 Give examples
 ```
 
-## Authors
-
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
-
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* Hat tip to anyone whose code was used
-* Inspiration
-* etc
