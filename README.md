@@ -41,11 +41,11 @@ expmt.extract_elems()
 w = widgets.interact(expmt.display_peaks,spectrum_index=widgets.IntText(value=0, step=1, description='Spectrum:'))
 ```
 
-2. Modify the table to add/remove peaks and fit their position or not. You can also leave a peak in the list and do not include it in the analysis by writting no in the column '#Fit Peak?'. 
+2. Modify the table to add/remove peaks and fit their position or not. You can also leave a peak in the list and do not include it in the analysis by writting 'no' in the column '#Fit Peak?'. 
 
 **Validate the sheet** by clicking outside it and **running the cell** expmt.extract_elems().
 
-3. You can also directly edit the Excel file in the folder with you file name.
+3. You can also directly edit the Excel file in the folder with your file name.
 
 ### Fit the spectrums
 When you are done with the peak definition, run the cell:
@@ -67,6 +67,9 @@ To save the fitting curve, check the box 'Save Fit?'.
 
 ### Continue with the next sample
 To generate the cells for the next sample, click on the button at the bottom of the notebook.
+
+### Tips
+If a peak position or area seems to be noisy, try switching off/on fitting its peak position.
 
 ## Expert
 
@@ -186,7 +189,7 @@ dparams_general['list_isfit'] = ['sl','ct','twc1']
 ```
 dparams_general['list_isfit'] = ['sl','ct','sfa0', 'sfa1']
 ```
-7. Repeat step 2 for 'sl','ct', 'noise', 'fG' with: 
+7. Repeat step 2 for 'sl', 'ct', 'noise', 'fG' with: 
 ```
 dparams_general['list_isfit'] = ['sl','ct', 'noise', 'fG']
 ```
