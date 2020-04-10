@@ -75,7 +75,7 @@ If a peak position or area seems to be noisy, try switching off/on fitting its p
 
 ### Getting Started
 
-Copy the files FluoJupyter.ipynb, FluoJupyter_functions.py, PyNexus.py and DefaultPeaks.csv on the local folder where the nxs files are. The nxs files should contain 'Fluo' in their name. Note that the notebook does not work with JupyterLab in its current version.
+Copy the files FluoJupyter.ipynb, FluoJupyter_functions.py, PyNexus.py, f-si, and DefaultPeaks.csv on the local folder where the nxs files are. The nxs files should contain 'Fluo' in their name. Note that the notebook does not work with JupyterLab in its current version.
 
 The aim of the Expert part is to determine the parameters in the first cell. It can be quite painful, but those parameters should not vary during an experiment. It is also possible to copy directly the parameters from a previous experiment (or from the examples provided here), and test if they are good for your current experimental setup.
 
