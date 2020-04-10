@@ -46,7 +46,7 @@ dparams_general['ind_last_channel'] = 2048
 dparams_general['is_elements'] = [False, False, False, False, True]
 ```
 
-** Warning:** Any time you update a value from the first cell (in dparams_general or dparams_fit), you need to re-execute the cell, and then to reload the experiment by executing the cell:
+**Warning:** Any time you update a value from the first cell (in dparams_general or dparams_fit), you need to re-execute the cell, and then to reload the experiment by executing the cell:
 ```
 expmt = Experiment(dparams_general, dparams_fit)
 ```
@@ -61,10 +61,10 @@ Validate the list by clicking outside the table and running the cell:
 ```
 expmt.extract_elems()
 ```
-** Warning:** For determining the fit parameters, you should fit the peak position of the most intense peaks.
+**Warning:** For determining the fit parameters, you should fit the peak position of the most intense peaks.
 
 ### Determine the fit parameters
-See inside FluoJupyter_functions.py to have explanation on each fit parameter. Some parameters do not have to be fitted, and can be kept constant in our experimental configuration:
+See inside FluoJupyter_functions.py to have an explanation on the peak fitting. Some parameters do not have to be fitted, and can be kept constant in our experimental configuration:
 ```
 dparams_fit['fan'] = 0.12
 dparams_fit['epsilon'] = 0.0036
@@ -110,22 +110,18 @@ dparams_fit['fG'] = 1.4326013905627302
 ```
 dparams_general['list_isfit'] = ['sl','ct','tfb0']
 ```
-
 4) Repeat step 2 for 'twc0' with: 
 ```
 dparams_general['list_isfit'] = ['sl','ct','twc0']
 ```
-
 5) Repeat step 2 for 'twc1' with: 
 ```
 dparams_general['list_isfit'] = ['sl','ct','twc1']
 ```
-
 6) Repeat step 2 for 'sfa0' and 'sfa1' with: 
 ```
 dparams_general['list_isfit'] = ['sl','ct','sfa0', 'sfa1']
 ```
-
 7) Repeat step 2 for 'sl','ct', 'noise', 'fG' with: 
 ```
 dparams_general['list_isfit'] = ['sl','ct', 'noise', 'fG']
@@ -134,17 +130,10 @@ dparams_general['list_isfit'] = ['sl','ct', 'noise', 'fG']
 ### Finishing
 It seems better to keep dparams_general['list_isfit'] = ['sl','ct', 'noise', 'fG'] for the User, especially if the intensity of the peaks varies significantly during an experiment.
 
+Replace the file DefaultPeaks.csv by the file Peaks.csv. 
+
 Delete the cells you have generated, and the file is ready for the User.
 
-### Prerequisites
-c) Update the parameters 'noise' and 'fG' in the first cell:
-
-
-What things you need to install the software and how to install them
-
-```
-Give examples
-```
 
 ## License
 
