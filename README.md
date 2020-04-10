@@ -4,6 +4,69 @@ FluoJupyter is a Jupyter Notebook to analyze X-Ray Fluorescence (XRF) experiment
 
 ## User
 
+### Getting Started
+1. Once the notebook is open, run the first cell with the parameters starting with:
+```
+# Run this cell
+from FluoJupyter_functions import *
+print_version()
+
+########### EXPERT PARAMETERS ################
+...
+```
+2. Run the next cell:
+```
+# Run this cell
+generate_cells_on_click()
+```
+3. Click on the button.
+
+### Enter the information on the experiment
+1. Double-click on the text cells to enter your sample name, and add relevant description.
+
+2. Enter the file name and click on the extraction button.
+
+3. Change the values of 'first/last spectrum' and 'first/last channel' if needed. Re-extract the file.
+
+### Choose the peaks
+1. Run the two next cells:
+```
+# Run this cell
+expmt.define_peaks()
+```
+```
+# Run this cell
+expmt.extract_elems()
+w = widgets.interact(expmt.display_peaks,spectrum_index=widgets.IntText(value=0, step=1, description='Spectrum:'))
+```
+
+2. Modify the table to add/remove peaks and fit their position or not. You can also leave a peak in the list and do not include it in the analysis by writting no in the column '#Fit Peak?'. 
+
+**Validate the sheet** by clicking outside it and **running the cell** expmt.extract_elems().
+
+3. You can also directly edit the Excel file in the folder with you file name.
+
+### Fit the spectrums
+When you are done with the peak definition, run the cell:
+```
+# Run this cell
+expmt.fit_spectrums()
+```
+
+You can follow the fit in real time. The results are continuously updated in the file FitResult.csv that you can open with you prefered software (Excel, Origin, Matlab ...).
+When the fit is done, the fitted parameters will be displayed.
+
+### Show the results on a specific spectrum
+(Optional) If you want to check the results of the fit on a specific spectrum you can run the cell:
+```
+# Run this cell
+w = widgets.interact(expmt.load_results,spectrum_index=widgets.IntText(value=0, step=1, description='Spectrum:'),is_save = widgets.Checkbox(value=False, description='Save Fit?'))
+```
+To save the fitting curve, check the box 'Save Fit?'.
+
+### Continue with the next sample
+To generate the cells for the next sample, click on the button at the bottom of the notebook.
+
 ## Expert
 
 ### Getting Started
