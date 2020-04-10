@@ -69,7 +69,8 @@ To save the fitting curve, check the box 'Save Fit?'.
 To generate the cells for the next sample, click on the button at the bottom of the notebook.
 
 ### Tips
-If a peak position or area seems to be noisy, try switching off/on fitting its peak position.
+1. If a peak position or area seems to be noisy, try switching off/on fitting its peak position.
+2. To export the notebook in html, first click in the menu Widgets/Save Notebook Widget State, then File/Download as/html.
 
 ## Expert
 
