@@ -133,7 +133,7 @@ expmt.extract_elems()
 ### Determine the fit parameters
 See inside FluoJupyter_functions.py to have an explanation on the peak fitting. Some parameters do not have to be fitted, and can be kept constant in our experimental configuration:
 ```
-dparams_fit['fan'] = 0.12
+dparams_fit['fan'] = 0.115
 dparams_fit['epsilon'] = 0.0036
 dparams_fit['tfb1'] = 1e-10
 dparams_fit['fA'] = 1.0e-10
