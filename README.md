@@ -74,6 +74,8 @@ To generate the cells for the next sample, click on the button at the bottom of 
 
 ## Expert
 
+[](https://img.youtube.com/vi/O-ULCnkTFYU/0.jpg)](https://www.youtube.com/watch?v=O-ULCnkTFYU)
+
 ### Getting Started
 
 Copy the files FluoJupyter.ipynb, FluoJupyter_functions.py, PyNexus.py, f-si, and DefaultPeaks.csv on the local folder where the nxs files are. The nxs files should contain 'Fluo' in their name. Note that the notebook does not work with JupyterLab in its current version.
