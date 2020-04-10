@@ -88,7 +88,7 @@ dparams_fit['sfa0'] = 1e-10
 dparams_fit['sfa1'] = 1e-5
 ```
 2) Fit 'noise' and 'fG'
-a) Update the parameter 'list_isfit':
+2.a) Update the parameter 'list_isfit':
 ```
 dparams_general['list_isfit'] = ['sl','ct', 'noise', 'fG']
 ```
@@ -96,12 +96,12 @@ Reload the parameters and run all the cells up to (included):
 ```
 expmt.fit_spectrums()
 ```
-b) When the fit is done, get the average results for 'noise' and 'fG' using the command:
+2.b) When the fit is done, get the average results for 'noise' and 'fG' using the command:
 ```
 print(np.mean(expmt.dparams_list['noise_list']))
 print(np.mean(expmt.dparams_list['fG_list']))
 ```
-c) Update the parameters 'noise' and 'fG' in the first cell:
+2.c) Update the parameters 'noise' and 'fG' in the first cell:
 ```
 dparams_fit['noise'] = 0.11135974573713625
 dparams_fit['fG'] = 1.4326013905627302
