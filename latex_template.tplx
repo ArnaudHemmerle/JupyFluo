@@ -1,0 +1,29 @@
+
+((=- Default to the notebook output style -=))
+((*- if not cell_style is defined -*))
+    ((* set cell_style = 'style_jupyter.tplx' *))
+((*- endif -*))
+
+((=- Inherit from the specified cell style. -=))
+((* extends cell_style *))
+
+
+((* block predoc *))
+    ((( super() )))
+    ((* block tableofcontents *))\tableofcontents((* endblock tableofcontents *))
+((* endblock predoc *))
+
+
+((* block figure scoped *))
+    { \vspace*{-0.4cm} }
+    \begin{center}
+    \adjustimage{max size={0.85\linewidth}{1.\paperheight}}{((( filename )))}
+    \end{center}
+    { \hspace*{\fill}}
+    { \vspace*{-0.4cm} }
+((* endblock figure *))
+
+
+((* block margins *))
+\geometry{verbose,tmargin=0.6in,bmargin=0.8in,lmargin=1in,rmargin=1in}
+((* endblock margins *))
