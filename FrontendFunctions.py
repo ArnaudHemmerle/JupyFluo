@@ -42,7 +42,7 @@ def Print_version():
     print("FrontendFunctions: %s"%__version__)
     print("PyNexus: %s"%PN.__version__)
     print('Check that you are using the last versions of the modules and read the manual on:\n%s'
-          %'https://github.com/ArnaudHemmerle/JupyFluo')
+          %'https://github.com/ArnaudHemmerle/JupyFluo'+'\n')
     print("")
 
 def Check_files(expt):
