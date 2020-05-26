@@ -16,6 +16,7 @@ from math import isclose
 import os
 import shutil
 import csv
+from psutil import virtual_memory as vm
 
 import base64
 from IPython.display import clear_output, Javascript, display, HTML
@@ -28,7 +29,7 @@ except:
 
 
     
-__version__="0.1"
+__version__="0.2"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
@@ -42,7 +43,7 @@ def Print_version():
     print("FrontendFunctions: %s"%__version__)
     print("PyNexus: %s"%PN.__version__)
     print('Check that you are using the last versions of the modules and read the manual on:\n%s'
-          %'https://github.com/ArnaudHemmerle/JupyFluo'+'\n')
+          %'https://github.com/ArnaudHemmerle/JupyFluo')
     print("")
 
 def Check_files(expt):
@@ -370,7 +371,13 @@ def Extract_nexus(scan):
     2) Correct with ICR/OCR.
     3) Sum the fluospectrums and put them in scan.allspectrums_corr
     """
-    scan.nexus = PN.PyNexusFile(scan.path, fast=True)
+    # Check available memory
+    mem = vm()
+    if mem.free*0.9 < os.path.getsize(scan.path):
+        fast = False
+    else:
+        fast = True
+    scan.nexus = PN.PyNexusFile(scan.path, fast=fast)
 
     # Number of spectrums taken during the scan
     scan.nb_allspectrums = scan.nexus.get_nbpts()
