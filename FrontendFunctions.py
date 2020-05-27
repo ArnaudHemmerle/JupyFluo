@@ -29,7 +29,7 @@ except:
 
 
     
-__version__="0.2"
+__version__="0.3"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
@@ -451,9 +451,9 @@ def Define_subsets(scan):
     print('File empty after spectrum %g.'%ind_non_zero_spectrums[-1])
 
     # Subset of channels and spectrums defined by user
-    scan.channels = np.arange(scan.ind_first_channel, scan.ind_last_channel)
-    scan.spectrums = scan.allspectrums_corr[scan.ind_first_spectrum:scan.ind_last_spectrum,
-                                            scan.ind_first_channel:scan.ind_last_channel]
+    scan.channels = np.arange(scan.ind_first_channel, scan.ind_last_channel+1)
+    scan.spectrums = scan.allspectrums_corr[scan.ind_first_spectrum:scan.ind_last_spectrum+1,
+                                            scan.ind_first_channel:scan.ind_last_channel+1]
 
 def Plot_subsets(scan):
     """
