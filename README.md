@@ -5,7 +5,7 @@ The notebook should be first set up by an Expert following the instructions in t
 Please note that the notebook is currently in development. Any feedback is welcome.
 
 ## Last versions of modules:
-FrontendFunctions.py: 0.2  
+FrontendFunctions.py: 0.3  
 AnalysisFunctions.py: 0.2
 
 ## User
