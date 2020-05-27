@@ -6,7 +6,7 @@ Please note that the notebook is currently in development. Any feedback is welco
 
 ## Last versions of modules:
 FrontendFunctions.py: 0.2  
-AnalysisFunctions.py: 0.1
+AnalysisFunctions.py: 0.2
 
 ## User
 [![image](https://imgur.com/NeXYpj8.png)](https://www.youtube.com/watch?v=d7EmOnYjqbk)
@@ -145,31 +145,31 @@ FF.Extract_elems(scan, expt)
 ### Determine the fit parameters
 See inside AnalysisFunctions.py to have an explanation on the peak fitting. Some parameters do not have to be fitted, and can be kept constant in our experimental configuration:
 ```
-expt.fan = 0.115
-expt.epsilon = 0.0036
-expt.tfb1 = 1e-10
-expt.fA = 1.0e-10
-expt.fB = 1.0e-10
-expt.gammaA = 1.0e10
-expt.gammaB = 1.0e10
+dparams_fit['fan'] = 0.115
+dparams_fit['epsilon'] = 0.0036
+dparams_fit['tfb1'] = 1e-10
+dparams_fit['fA'] = 1.0e-10
+dparams_fit['fB'] = 1.0e-10
+dparams_fit['gammaA'] = 1.0e10
+dparams_fit['gammaB'] = 1.0e10
 ```
 Here we detail a procedure which seems to be robust for determining the other parameters. 
 1. First start with these values :
 ```
-expt.noise = 0.1
-expt.sl = 0.
-expt.ct = 0.
-expt.tfb0 = 0.1
-expt.twc0 = 1.
-expt.twc1 = 0.1
-expt.fG = 1.5
-expt.sfa0 = 1e-10
-expt.sfa1 = 1e-5
+dparams_fit['noise'] = 0.1
+dparams_fit['sl'] = 0.
+dparams_fit['ct'] = 0.
+dparams_fit['tfb0'] = 0.1
+dparams_fit['twc0'] = 1.
+dparams_fit['twc1'] = 0.1
+dparams_fit['fG'] = 1.5
+dparams_fit['sfa0'] = 1e-10
+dparams_fit['sfa1'] = 1e-5
 ```
 2. Fit 'noise' and 'fG'
  - Update the parameter 'list_isfit':
 ```
-expt.list_isfit = ['sl','ct', 'noise', 'fG']
+dparams_fit['list_isfit'] = ['sl','ct', 'noise', 'fG']
 ```
 Reload the parameters and run all the cells up to (included):
 ```
@@ -177,33 +177,33 @@ AF.Fit_spectrums(scan, expt)
 ```
  - When the fit is done, get the average results for 'noise' and 'fG' using the command:
 ```
-print(np.mean(expt.noise_list))
-print(np.mean(expt.fG_list))
+print(np.mean(dparams_fit['noise_list']))
+print(np.mean(dparams_fit['fG_list']))
 ```
  - Update the parameters 'noise' and 'fG' in the first cell:
 ```
-expt.noise = 0.11135974573713625
-expt.fG = 1.4326013905627302
+dparams_fit['noise'] = 0.11135974573713625
+dparams_fit['fG'] = 1.4326013905627302
 ```
 3. Repeat step 2 for 'tfb0' with: 
 ```
-expt.list_isfit = ['sl','ct','tfb0']
+dparams_fit['list_isfit'] = ['sl','ct','tfb0']
 ```
 4. Repeat step 2 for 'twc0' with: 
 ```
-expt.list_isfit = ['sl','ct','twc0']
+dparams_fit['list_isfit'] = ['sl','ct','twc0']
 ```
 5. Repeat step 2 for 'twc1' with: 
 ```
-expt.list_isfit = ['sl','ct','twc1']
+dparams_fit['list_isfit'] = ['sl','ct','twc1']
 ```
 6. Repeat step 2 for 'sfa0' and 'sfa1' with: 
 ```
-expt.list_isfit = ['sl','ct','sfa0', 'sfa1']
+dparams_fit['list_isfit'] = ['sl','ct','sfa0', 'sfa1']
 ```
 7. Repeat step 2 for 'sl', 'ct', 'noise', 'fG' with: 
 ```
-expt.list_isfit = ['sl','ct', 'noise', 'fG']
+dparams_fit['list_isfit'] = ['sl','ct', 'noise', 'fG']
 ```
 
 ### Finishing
