@@ -21,7 +21,7 @@ from IPython.display import clear_output
 
 
 
-__version__="0.1"
+__version__="0.2"
 
 """
 Here are defined the functions for analysis.
@@ -239,6 +239,9 @@ def Fit_spectrums(scan, expt, is_save=True):
             for name in dparams_list:
                 dparams_list[name] =  np.append(dparams_list[name], result.params[name[:-5]].value)
 
+        # Update the dparams_list in expt
+        expt.dparams_list = dparams_list
+        
         #####################################################
         #####################   SAVE   ######################
         #####################################################
