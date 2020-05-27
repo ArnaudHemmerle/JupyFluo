@@ -177,8 +177,8 @@ AF.Fit_spectrums(scan, expt)
 ```
  - When the fit is done, get the average results for 'noise' and 'fG' using the command:
 ```
-print(np.mean(expt.dparams_fit['noise_list']))
-print(np.mean(expt.dparams_fit['fG_list']))
+print(np.mean(expt.dparams_list['noise_list']))
+print(np.mean(expt.dparams_list['fG_list']))
 ```
  - Update the parameters 'noise' and 'fG' in the first cell:
 ```
