@@ -29,7 +29,7 @@ except:
 
 
     
-__version__="0.3"
+__version__="0.4"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
@@ -399,6 +399,7 @@ def Extract_nexus(scan):
 
     def extract_and_correct(ind_spectrum):
         """Extract the requested fluospectrum from the nexus file and correct it with ICR/OCR"""
+
         for i in range(len(stamps)):
             if (stamps[i][1] != None and stamps[i][1].lower() == "fluoicr0"+ind_spectrum):
                 fluoicr = data[i]
@@ -406,10 +407,18 @@ def Extract_nexus(scan):
                 fluoocr = data[i]
             if (stamps[i][1] != None and stamps[i][1].lower() == "fluospectrum0"+ind_spectrum):
                 fluospectrum = data[i]
+            if (stamps[i][1] == None and stamps[i][0].lower() == "integration_time"):
+                integration_time = data[i]
+                
         ICR = fluoicr
-        OCR = fluoocr
+        try:
+            OCR = fluoocr
+        except:
+            print(PN._RED+"OCR not found in data. Taking OCR = spectrum_intensity/counting_time."+PN._RESET)
+            OCR = np.array([np.sum(fluospectrum[n])/integration_time[n] for n in range(len(fluospectrum))])
+               
         ratio = np.array([ICR[n]/OCR[n] if (~np.isclose(OCR[n],0.) & ~np.isnan(OCR[n]) & ~np.isnan(ICR[n]))
-                          else 0. for n in range(len(ICR))])
+                         else 0. for n in range(len(ICR))])            
         spectrums_corr = np.array([fluospectrum[n]*ratio[n] for n in range(len(ratio))])
 
         return spectrums_corr
