@@ -39,9 +39,6 @@ i.e. the widgets (buttons, interactive plots), the self-generation of cells, con
 
 
 # General parameters for layout and style of widgets
-layout_100 = widgets.Layout(width='100px', height='40px')
-layout_200 = widgets.Layout(width='200px', height='40px')
-layout_500 = widgets.Layout(width='500px', height='40px')
 style = {'description_width': 'initial'}
 
 def Print_version():
@@ -176,8 +173,8 @@ def Generate_cells_on_click(expt):
         else:
             print("There was something wrong with the export to pdf. Please try again.")
     
-    button_generate = widgets.Button(description="Start analysis", layout=layout_200)
-    button_export = widgets.Button(description="Export to pdf", layout=layout_200)
+    button_generate = widgets.Button(description="Start analysis", layout=widgets.Layout(width='200px'))
+    button_export = widgets.Button(description="Export to pdf", layout=widgets.Layout(width='200px'))
     
     display(widgets.HBox([button_generate, button_export]))
     button_generate.on_click(on_button_generate_clicked)
@@ -256,6 +253,10 @@ def Define_scan(expt):
         if not os.path.exists(expt.working_dir+scan.id):
             os.mkdir(expt.working_dir+scan.id)   
             
+        # Check if the csv file for parameters already exists, if not copy the DefaultParameters.csv file
+        if not os.path.isfile(expt.working_dir+scan.id+'/Parameters.csv'):
+            shutil.copy('DefaultParameters.csv', expt.working_dir+scan.id+'/Parameters.csv')    
+            
         Display_widgets(scan, expt)
 
     w_select_scan = widgets.Dropdown(
@@ -272,31 +273,15 @@ def Define_scan(expt):
 
 
 def Display_widgets(scan, expt):    
-      
-    # Load the scan info from file
-    with open(expt.working_dir+scan.id+'/Parameters.csv', "r") as f:
-        reader = csv.DictReader(f, delimiter=';')
-        for row in reader:
-            is_fluospectrum00=eval(row['is_fluospectrum00'])
-            is_fluospectrum01=eval(row['is_fluospectrum01'])
-            is_fluospectrum02=eval(row['is_fluospectrum02'])
-            is_fluospectrum03=eval(row['is_fluospectrum03'])
-            is_fluospectrum04=eval(row['is_fluospectrum04'])
-            ind_first_channel=int(row['ind_first_channel'])
-            ind_last_channel=int(row['ind_last_channel'])
-            ind_first_spectrum=int(row['ind_first_spectrum'])
-            ind_last_spectrum=int(row['ind_last_spectrum'])
-    
-    
+
     def on_button_extract_clicked(b):
         """Extract the scan."""
 
+        # Update the parameters with current values
         update_params()
         
         # Clear the plots and reput the boxes
         clear_output(wait=True)
-        #display(widgets.HBox([w_ind_spectrum]))
-        #display(widgets.HBox([button_extract,button_modify_params]))
         Display_widgets(scan, expt)
         
         # Load the file
@@ -309,6 +294,7 @@ def Display_widgets(scan, expt):
         Define_subsets(scan)
         Plot_subsets(scan)
 
+
     def update_params():
         """Update the parameters with the current values"""
             
@@ -316,16 +302,27 @@ def Display_widgets(scan, expt):
         scan.is_fluospectrum01 = w_is_fluospectrum01.value
         scan.is_fluospectrum02 = w_is_fluospectrum02.value
         scan.is_fluospectrum03 = w_is_fluospectrum03.value
-        scan.is_fluospectrum04 = w_is_fluospectrum04.value
-            
+        scan.is_fluospectrum04 = w_is_fluospectrum04.value     
         scan.ind_first_channel = w_ind_first_channel.value
-        scan.ind_last_channel = w_ind_last_channel.value
-        
-        
+        scan.ind_last_channel = w_ind_last_channel.value    
         scan.ind_first_spectrum = w_ind_first_spectrum.value
         scan.ind_last_spectrum = w_ind_last_spectrum.value
+        scan.gain = w_gain.value
+        scan.eV0 = w_eV0.value
+        scan.is_ipysheet = w_is_ipysheet.value
+        scan.delimiter = w_delimiter.value
+        scan.fitstuck_limit = w_fitstuck_limit.value
+        scan.is_fast = w_is_fast.value
+        
+        list_isfit = ['sl'*w_is_sl.value, 'ct'*w_is_ct.value, 'noise'*w_is_noise.value,
+              'sfa0'*w_is_sfa0.value, 'sfa1'*w_is_sfa1.value, 'tfb0'*w_is_tfb0.value, 'tfb1'*w_is_tfb1.value,
+              'twc0'*w_is_twc0.value, 'twc1'*w_is_twc1.value, 'fG'*w_is_fG.value,
+              'fA'*w_is_fA.value, 'fB'*w_is_fB.value, 'gammaA'*w_is_gammaA.value, 'gammaB'*w_is_gammaB.value]
 
-
+        while("" in list_isfit) : 
+            list_isfit.remove("")
+            
+        scan.list_isfit_str = ','.join(list_isfit)
         
         # Prepare the header of the csv file
         with open(expt.working_dir+scan.id+'/Parameters.csv', "w", newline='') as f:
@@ -339,7 +336,14 @@ def Display_widgets(scan, expt):
                     'ind_first_channel',
                     'ind_last_channel',
                     'ind_first_spectrum',
-                    'ind_last_spectrum',                
+                    'ind_last_spectrum', 
+                    'gain',
+                    'eV0',
+                    'is_ipysheet',
+                    'delimiter',
+                    'fitstuck_limit',
+                    'is_fast',
+                    'list_isfit_str'
                     ])
             writer.writerow(header)
             
@@ -352,28 +356,65 @@ def Display_widgets(scan, expt):
                     scan.ind_first_channel,
                     scan.ind_last_channel,
                     scan.ind_first_spectrum,
-                    scan.ind_last_spectrum  
+                    scan.ind_last_spectrum,
+                    scan.gain,
+                    scan.eV0,
+                    scan.is_ipysheet,
+                    scan.delimiter,
+                    scan.fitstuck_limit,
+                    scan.is_fast,
+                    scan.list_isfit_str
                     ])
 
-        
+
+    # Load the scan info from file
+    with open(expt.working_dir+scan.id+'/Parameters.csv', "r") as f:
+        reader = csv.DictReader(f, delimiter=';')
+        for row in reader:
+            is_fluospectrum00=eval(row['is_fluospectrum00'])
+            is_fluospectrum01=eval(row['is_fluospectrum01'])
+            is_fluospectrum02=eval(row['is_fluospectrum02'])
+            is_fluospectrum03=eval(row['is_fluospectrum03'])
+            is_fluospectrum04=eval(row['is_fluospectrum04'])
+            ind_first_channel=int(row['ind_first_channel'])
+            ind_last_channel=int(row['ind_last_channel'])
+            ind_first_spectrum=int(row['ind_first_spectrum'])
+            ind_last_spectrum=int(row['ind_last_spectrum'])
+            gain=float(row['gain'])
+            eV0=float(row['eV0'])
+            is_ipysheet=eval(row['is_ipysheet'])
+            delimiter=str(row['delimiter'])
+            fitstuck_limit=int(row['fitstuck_limit'])
+            is_fast=eval(row['is_fast'])
+            list_isfit_str=str(row['list_isfit_str'])
+       
+    # convert list_isfit_str into a list
+    list_isfit = [str(list_isfit_str.split(',')[i]) for i in range(len(list_isfit_str.split(',')))]
+
+                
     w_is_fluospectrum00 = widgets.Checkbox(
         value=is_fluospectrum00,
+        style=style,
         description='Element 0')
 
     w_is_fluospectrum01 = widgets.Checkbox(
         value=is_fluospectrum01,
+        style=style,
         description='Element 1')
 
     w_is_fluospectrum02 = widgets.Checkbox(
         value=is_fluospectrum02,
+        style=style,
         description='Element 2')
 
     w_is_fluospectrum03 = widgets.Checkbox(
         value=is_fluospectrum03,
+        style=style,
         description='Element 3')
 
     w_is_fluospectrum04 = widgets.Checkbox(
         value=is_fluospectrum04,
+        style=style,
         description='Element 4')
 
     w_ind_first_channel = widgets.BoundedIntText(
@@ -381,7 +422,8 @@ def Display_widgets(scan, expt):
         min=0,
         max=2048,
         step=1,
-        description='First channel:',
+        description='First channel',
+        layout=widgets.Layout(width='200px'),
         style=style)
 
     w_ind_last_channel = widgets.BoundedIntText(
@@ -389,41 +431,146 @@ def Display_widgets(scan, expt):
         min=0,
         max=2048,
         step=1,
-        description='Last channel:',
+        description='Last channel',
+        layout=widgets.Layout(width='200px'),
         style=style)
             
     w_ind_first_spectrum = widgets.IntText(
         value=ind_first_spectrum,
         step=1,
-        description='First spectrum:',
+        description='First spectrum',
         layout=widgets.Layout(width='200px'),
         style=style)
 
     w_ind_last_spectrum = widgets.IntText(
         value=ind_last_spectrum,
         step=1,
-        description='Last spectrum:',
+        description='Last spectrum',
         layout=widgets.Layout(width='200px'),
         style=style)
-
-    w_ind_spectrum = widgets.HBox([w_ind_first_spectrum, w_ind_last_spectrum])
-    display(widgets.HBox([w_ind_spectrum]))
     
-    button_extract = widgets.Button(description="Extract the scan",layout=layout_500)
+    w_gain = widgets.FloatText(
+        value=gain,
+        description='Gain',
+        layout=widgets.Layout(width='100px'),
+        style=style)
+    
+    w_eV0 = widgets.FloatText(
+        value=eV0,
+        description='eV0',
+        layout=widgets.Layout(width='100px'),
+        style=style)    
+    
+    w_is_ipysheet = widgets.Checkbox(
+        value=is_ipysheet,
+        style=style,
+        description='Use ipysheet')
+  
+    w_delimiter = widgets.Text(
+        value=delimiter,
+        description='Delimiter',
+        layout=widgets.Layout(width='100px'),
+        style=style)
+
+    w_fitstuck_limit = widgets.IntText(
+        value=fitstuck_limit,
+        description='Iter. limit',
+        layout=widgets.Layout(width='100px'),
+        style=style)
+
+    w_is_fast = widgets.Checkbox(
+        value=is_fast,
+        style=style,
+        description='Fast extract')    
+
+    w_is_gammaA = widgets.Checkbox(
+        value='gammaA' in list_isfit,
+        style=style,
+        description='gammaA')  
+
+    w_is_gammaB = widgets.Checkbox(
+        value='gammaB' in list_isfit,
+        style=style,
+        description='gammaB')  
+
+    w_is_fA = widgets.Checkbox(
+        value='fA' in list_isfit,
+        style=style,
+        description='fA')
+
+    w_is_fB = widgets.Checkbox(
+        value='fB' in list_isfit,
+        style=style,
+        description='fB')
+
+    w_is_fG = widgets.Checkbox(
+        value='fG' in list_isfit,
+        style=style,
+        description='fG')
+
+    w_is_twc0 = widgets.Checkbox(
+        value='twc0' in list_isfit,
+        style=style,
+        description='twc0')
+
+    w_is_twc1 = widgets.Checkbox(
+        value='twc1' in list_isfit,
+        style=style,
+        description='twc1')
+
+    w_is_tfb1 = widgets.Checkbox(
+        value='tfb1' in list_isfit,
+        style=style,
+        description='tfb1')
+
+    w_is_tfb0 = widgets.Checkbox(
+        value='tfb0' in list_isfit,
+        style=style,
+        description='tfb0')
+
+    w_is_sfa0 = widgets.Checkbox(
+        value='sfa0' in list_isfit,
+        style=style,
+        description='sfa0')
+
+    w_is_sfa1 = widgets.Checkbox(
+        value='sfa1' in list_isfit,
+        style=style,
+        description='sfa1')
+
+    w_is_sl = widgets.Checkbox(
+        value='sl' in list_isfit,
+        style=style,
+        description='sl')
+
+    w_is_ct = widgets.Checkbox(
+        value='ct' in list_isfit,
+        style=style,
+        description='ct')
+
+    w_is_noise = widgets.Checkbox(
+        value='noise' in list_isfit,
+        style=style,
+        description='noise')
+
+    button_extract = widgets.Button(description="Extract the scan",layout=widgets.Layout(width='500px'))
     button_extract.on_click(on_button_extract_clicked)
+
+    display(widgets.HBox([w_ind_first_channel, w_ind_last_channel, w_ind_first_spectrum, w_ind_last_spectrum]))
+    
     w_fluospectrum = widgets.HBox([w_is_fluospectrum00, w_is_fluospectrum01,w_is_fluospectrum02,
-                                  w_is_fluospectrum03,w_is_fluospectrum04])
+                                   w_is_fluospectrum03,w_is_fluospectrum04])  
+    display(w_fluospectrum)
+    display(widgets.HBox([w_gain, w_eV0, w_delimiter, w_fitstuck_limit, w_is_ipysheet, w_is_fast]))
 
-    w_ind_channel = widgets.HBox([w_ind_first_channel, w_ind_last_channel])
-            
-    display(w_fluospectrum, w_ind_channel)
-
-
+    display(widgets.HBox([w_is_sl, w_is_ct, w_is_noise, w_is_sfa0, w_is_sfa1, w_is_tfb0, w_is_tfb1 ]))
+    display(widgets.HBox([w_is_twc0, w_is_twc1, w_is_fG, w_is_fA, w_is_fB, w_is_gammaA,w_is_gammaB]))    
+    
     display(widgets.HBox([button_extract]))
     
 
-    
-    return scan
+    return scan 
+
 
 
 
@@ -451,13 +598,8 @@ def Extract_nexus(scan):
     2) Correct with ICR/OCR.
     3) Sum the fluospectrums and put them in scan.allspectrums_corr
     """
-    # Check available memory
-    mem = vm()
-    if mem.free*0.9 < os.path.getsize(scan.path):
-        fast = False
-    else:
-        fast = True
-    scan.nexus = PN.PyNexusFile(scan.path, fast=fast)
+    
+    scan.nexus = PN.PyNexusFile(scan.path, fast=scan.is_fast)
 
     # Number of spectrums taken during the scan
     scan.nb_allspectrums = scan.nexus.get_nbpts()

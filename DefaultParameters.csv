@@ -1,0 +1,2 @@
+is_fluospectrum00;is_fluospectrum01;is_fluospectrum02;is_fluospectrum03;is_fluospectrum04;ind_first_channel;ind_last_channel;ind_first_spectrum;ind_last_spectrum;gain;eV0;is_ipysheet;delimiter;fitstuck_limit;is_fast;list_isfit_str
+True;True;True;False;True;0;10;1;4;10.;3.2;True;";";1000;True;sl,ct,gammaA

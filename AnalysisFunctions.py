@@ -21,7 +21,7 @@ from IPython.display import clear_output
 
 
 
-__version__="0.2"
+__version__="0.3"
 
 """
 Here are defined the functions for analysis.
@@ -212,16 +212,16 @@ def Fit_spectrums(scan, expt, is_save=True):
 
         if scan.is_fitstuck:
 
-            # If the fit was stuck we put the value set by fitstuck_value everywhere
+            # If the fit was stuck we put the value set by NaN everywhere
             for elem in elems:
-                elem.area_list = np.append(elem.area_list, expt.fitstuck_value)
+                elem.area_list = np.append(elem.area_list, np.nan)
 
                 for line in elem.lines:
-                    line.intRel_list = np.append(line.intRel_list , expt.fitstuck_value)
-                    line.position_list = np.append(line.position_list, expt.fitstuck_value)
+                    line.intRel_list = np.append(line.intRel_list , np.nan)
+                    line.position_list = np.append(line.position_list, np.nan)
 
             for name in dparams_list:
-                dparams_list[name] =  np.append(dparams_list[name], expt.fitstuck_value)
+                dparams_list[name] =  np.append(dparams_list[name], np.nan)
 
         else:
             for elem in elems:
