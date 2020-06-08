@@ -139,14 +139,14 @@ def Generate_cells_on_click(expt):
     ['scan = FF.Define_scan(expt)', position, 'code', False, True],
     ['## Peak definition', position, 'markdown', False, True],
     ['# Run this cell\n'+\
-     'FF.Define_peaks(scan, expt)', position, 'code', False, False],
+     'FF.Define_peaks(expt)', position, 'code', False, False],
     ['# Run this cell\n'+\
-     'FF.Extract_elems(scan, expt)\n'+\
-     'w = widgets.interact(FF.Display_peaks, scan=widgets.fixed(scan), expt=widgets.fixed(expt), spectrum_index=widgets.IntText(value=0, step=1, description=\'Spectrum:\'))'\
+     'FF.Extract_elems(expt)\n'+\
+     'w = widgets.interact(FF.Display_peaks, expt=widgets.fixed(expt), spectrum_index=widgets.IntText(value=0, step=1, description=\'Spectrum:\'))'\
      , position,'code', False, False],
     ['## Fit the spectrums', position, 'markdown', False, True],
     ['# Run this cell\n'+\
-     'AF.Fit_spectrums(scan, expt)', position, 'code', False, False],
+     'AF.Fit_spectrums(expt)', position, 'code', False, False],
     ['## Show the results on a given spectrum', position, 'markdown', False, True],
     ['# Run this cell\n'+\
      'FF.Choose_spectrum_to_plot()', position,'code', False, False],
@@ -232,9 +232,6 @@ def Define_scan(expt):
     2) Create widgets to allow for user to enter required params.
     3) Execute the spectrum extraction when clicking on the button.
     """
-    
-    # Create an object for the current scan
-    scan = Scan()
 
     # Create the list of nxs files in the folder
     expt.list_nxs_files = [file for file in sorted(os.listdir(expt.recording_dir)) if 'nxs' in file][::-1]
@@ -246,18 +243,18 @@ def Define_scan(expt):
     def on_button_choose_scan_clicked(b): 
      
         # Generate several identifiers for the scan
-        scan.nxs = w_select_scan.value
-        Define_scan_identifiers(scan, expt)
+        expt.nxs = w_select_scan.value
+        Define_scan_identifiers(expt)
 
         # Create a folder for saving params and results, if it does not already exist.
-        if not os.path.exists(expt.working_dir+scan.id):
-            os.mkdir(expt.working_dir+scan.id)   
+        if not os.path.exists(expt.working_dir+expt.id):
+            os.mkdir(expt.working_dir+expt.id)   
             
         # Check if the csv file for parameters already exists, if not copy the DefaultParameters.csv file
-        if not os.path.isfile(expt.working_dir+scan.id+'/Parameters.csv'):
-            shutil.copy('DefaultParameters.csv', expt.working_dir+scan.id+'/Parameters.csv')    
+        if not os.path.isfile(expt.working_dir+expt.id+'/Parameters.csv'):
+            shutil.copy('DefaultParameters.csv', expt.working_dir+expt.id+'/Parameters.csv')    
             
-        Display_widgets(scan, expt)
+        Display_widgets(expt)
 
     w_select_scan = widgets.Dropdown(
         options=expt.list_nxs_files,
@@ -272,7 +269,23 @@ def Define_scan(expt):
     display(widgets.HBox([w_select_scan, button_choose_scan]))
 
 
-def Display_widgets(scan, expt):    
+def Display_widgets(expt):    
+
+    # Quick extraction of scan info
+    nexus = PN.PyNexusFile(expt.path)
+    
+    # Extract number of spectrums taken during the scan
+    expt.nb_allspectrums = nexus.get_nbpts()
+    print("There are %g spectrums in the scan."%(expt.nb_allspectrums))
+
+
+    # Extract list of detector elements available
+    stamps = nexus.extractStamps()
+    fluospectrums_available = []
+    for i in range(len(stamps)):
+        if (stamps[i][1] != None and "fluospectrum0" in stamps[i][1].lower()):
+            fluospectrums_available.append(stamps[i][1].lower()[-1])
+    
 
     def on_button_extract_clicked(b):
         """Extract the scan."""
@@ -282,38 +295,52 @@ def Display_widgets(scan, expt):
         
         # Clear the plots and reput the boxes
         clear_output(wait=True)
-        Display_widgets(scan, expt)
+        Display_widgets(expt)
         
         # Load the file
-        Extract_nexus(scan)
+        Extract_nexus(expt)
 
-        print("Extraction of:\n%s"%scan.path)
-        print("There are %g spectrums in the scan."%(scan.nb_allspectrums))
-
+        print("Extraction of:\n%s"%expt.path)
+        
         # Define and plot the channels and spectrums subsets
-        Define_subsets(scan)
-        Plot_subsets(scan)
+        Define_subsets(expt)
+        Plot_subsets(expt)
 
 
     def update_params():
         """Update the parameters with the current values"""
             
-        scan.is_fluospectrum00 = w_is_fluospectrum00.value
-        scan.is_fluospectrum01 = w_is_fluospectrum01.value
-        scan.is_fluospectrum02 = w_is_fluospectrum02.value
-        scan.is_fluospectrum03 = w_is_fluospectrum03.value
-        scan.is_fluospectrum04 = w_is_fluospectrum04.value     
-        scan.ind_first_channel = w_ind_first_channel.value
-        scan.ind_last_channel = w_ind_last_channel.value    
-        scan.ind_first_spectrum = w_ind_first_spectrum.value
-        scan.ind_last_spectrum = w_ind_last_spectrum.value
-        scan.gain = w_gain.value
-        scan.eV0 = w_eV0.value
-        scan.is_ipysheet = w_is_ipysheet.value
-        scan.delimiter = w_delimiter.value
-        scan.fitstuck_limit = w_fitstuck_limit.value
-        scan.is_fast = w_is_fast.value
+        expt.is_fluospectrum00 = w_is_fluospectrum00.value
+        expt.is_fluospectrum01 = w_is_fluospectrum01.value
+        expt.is_fluospectrum02 = w_is_fluospectrum02.value
+        expt.is_fluospectrum03 = w_is_fluospectrum03.value
+        expt.is_fluospectrum04 = w_is_fluospectrum04.value     
+        expt.ind_first_channel = w_ind_first_channel.value
+        expt.ind_last_channel = w_ind_last_channel.value    
+        expt.ind_first_spectrum = w_ind_first_spectrum.value
+        expt.ind_last_spectrum = w_ind_last_spectrum.value
+        expt.gain = w_gain.value
+        expt.eV0 = w_eV0.value
+        expt.is_ipysheet = w_is_ipysheet.value
+        expt.delimiter = w_delimiter.value
+        expt.fitstuck_limit = w_fitstuck_limit.value
+        expt.is_fast = w_is_fast.value
+        expt.sl = w_sl.value
+        expt.ct = w_ct.value
+        expt.noise = w_noise.value
+        expt.sfa0 = w_sfa0.value
+        expt.sfa1 = w_sfa1.value
+        expt.tfb0 = w_tfb0.value
+        expt.tfb1 = w_tfb1.value
+        expt.twc0 = w_twc0.value
+        expt.twc1 = w_twc1.value
+        expt.fG = w_fG.value
+        expt.fA = w_fA.value
+        expt.fB = w_fB.value
+        expt.gammaA = w_gammaA.value
+        expt.gammaB = w_gammaB.value
         
+        # Particular case of list_isfit, going from str to array
         list_isfit = ['sl'*w_is_sl.value, 'ct'*w_is_ct.value, 'noise'*w_is_noise.value,
               'sfa0'*w_is_sfa0.value, 'sfa1'*w_is_sfa1.value, 'tfb0'*w_is_tfb0.value, 'tfb1'*w_is_tfb1.value,
               'twc0'*w_is_twc0.value, 'twc1'*w_is_twc1.value, 'fG'*w_is_fG.value,
@@ -321,12 +348,14 @@ def Display_widgets(scan, expt):
 
         while("" in list_isfit) : 
             list_isfit.remove("")
-            
-        scan.list_isfit_str = ','.join(list_isfit)
+           
+        expt.list_isfit_str = ','.join(list_isfit)
+        
+        
         
         # Prepare the header of the csv file
-        with open(expt.working_dir+scan.id+'/Parameters.csv', "w", newline='') as f:
-            writer = csv.writer(f,delimiter=';')
+        with open(expt.working_dir+expt.id+'/Parameters.csv', "w", newline='') as f:
+            writer = csv.writer(f,delimiter=';',dialect='excel')
             header = np.array([
                     'is_fluospectrum00',
                     'is_fluospectrum01',
@@ -343,50 +372,92 @@ def Display_widgets(scan, expt):
                     'delimiter',
                     'fitstuck_limit',
                     'is_fast',
-                    'list_isfit_str'
+                    'list_isfit_str',
+                    'sl',
+                    'ct',
+                    'noise',
+                    'sfa0',
+                    'sfa1',
+                    'tfb0',
+                    'tfb1',
+                    'twc0',
+                    'twc1',
+                    'fG',
+                    'fA',
+                    'fB',
+                    'gammaA',
+                    'gammaB'
                     ])
             writer.writerow(header)
             
             writer.writerow([
-                    scan.is_fluospectrum00,
-                    scan.is_fluospectrum01,
-                    scan.is_fluospectrum02,
-                    scan.is_fluospectrum03,
-                    scan.is_fluospectrum04,
-                    scan.ind_first_channel,
-                    scan.ind_last_channel,
-                    scan.ind_first_spectrum,
-                    scan.ind_last_spectrum,
-                    scan.gain,
-                    scan.eV0,
-                    scan.is_ipysheet,
-                    scan.delimiter,
-                    scan.fitstuck_limit,
-                    scan.is_fast,
-                    scan.list_isfit_str
+                    expt.is_fluospectrum00,
+                    expt.is_fluospectrum01,
+                    expt.is_fluospectrum02,
+                    expt.is_fluospectrum03,
+                    expt.is_fluospectrum04,
+                    expt.ind_first_channel,
+                    expt.ind_last_channel,
+                    expt.ind_first_spectrum,
+                    expt.ind_last_spectrum,
+                    expt.gain,
+                    expt.eV0,
+                    expt.is_ipysheet,
+                    expt.delimiter,
+                    expt.fitstuck_limit,
+                    expt.is_fast,
+                    expt.list_isfit_str,
+                    expt.sl,
+                    expt.ct,
+                    expt.noise,
+                    expt.sfa0,
+                    expt.sfa1,
+                    expt.tfb0,
+                    expt.tfb1,
+                    expt.twc0,
+                    expt.twc1,
+                    expt.fG,
+                    expt.fA,
+                    expt.fB,
+                    expt.gammaA,
+                    expt.gammaB
                     ])
 
 
     # Load the scan info from file
-    with open(expt.working_dir+scan.id+'/Parameters.csv', "r") as f:
-        reader = csv.DictReader(f, delimiter=';')
+    with open(expt.working_dir+expt.id+'/Parameters.csv', "r") as f:
+        reader = csv.DictReader(f, delimiter=';',dialect='excel')
         for row in reader:
-            is_fluospectrum00=eval(row['is_fluospectrum00'])
-            is_fluospectrum01=eval(row['is_fluospectrum01'])
-            is_fluospectrum02=eval(row['is_fluospectrum02'])
-            is_fluospectrum03=eval(row['is_fluospectrum03'])
-            is_fluospectrum04=eval(row['is_fluospectrum04'])
-            ind_first_channel=int(row['ind_first_channel'])
-            ind_last_channel=int(row['ind_last_channel'])
-            ind_first_spectrum=int(row['ind_first_spectrum'])
-            ind_last_spectrum=int(row['ind_last_spectrum'])
-            gain=float(row['gain'])
-            eV0=float(row['eV0'])
-            is_ipysheet=eval(row['is_ipysheet'])
-            delimiter=str(row['delimiter'])
-            fitstuck_limit=int(row['fitstuck_limit'])
-            is_fast=eval(row['is_fast'])
-            list_isfit_str=str(row['list_isfit_str'])
+            is_fluospectrum00 = eval(row['is_fluospectrum00'])
+            is_fluospectrum01 = eval(row['is_fluospectrum01'])
+            is_fluospectrum02 = eval(row['is_fluospectrum02'])
+            is_fluospectrum03 = eval(row['is_fluospectrum03'])
+            is_fluospectrum04 = eval(row['is_fluospectrum04'])
+            ind_first_channel = int(row['ind_first_channel'])
+            ind_last_channel = int(row['ind_last_channel'])
+            ind_first_spectrum = int(row['ind_first_spectrum'])
+            ind_last_spectrum = int(row['ind_last_spectrum'])
+            gain = float(row['gain'].replace(',', '.'))
+            eV0 = float(row['eV0'].replace(',', '.'))
+            is_ipysheet = eval(row['is_ipysheet'])
+            delimiter = str(row['delimiter'])
+            fitstuck_limit = int(row['fitstuck_limit'])
+            is_fast = eval(row['is_fast'])
+            list_isfit_str = str(row['list_isfit_str'])
+            sl = float(row['sl'].replace(',', '.'))
+            ct = float(row['ct'].replace(',', '.'))
+            noise = float(row['noise'].replace(',', '.'))
+            sfa0 = float(row['sfa0'].replace(',', '.'))
+            sfa1 = float(row['sfa1'].replace(',', '.'))
+            tfb0 = float(row['tfb0'].replace(',', '.'))
+            tfb1 = float(row['tfb1'].replace(',', '.'))
+            twc0 = float(row['twc0'].replace(',', '.'))
+            twc1 = float(row['twc1'].replace(',', '.'))
+            fG = float(row['fG'].replace(',', '.'))
+            fA = float(row['fA'].replace(',', '.'))
+            fB = float(row['fB'].replace(',', '.'))
+            gammaA = float(row['gammaA'].replace(',', '.'))
+            gammaB = float(row['gammaB'].replace(',', '.'))
        
     # convert list_isfit_str into a list
     list_isfit = [str(list_isfit_str.split(',')[i]) for i in range(len(list_isfit_str.split(',')))]
@@ -452,18 +523,19 @@ def Display_widgets(scan, expt):
     w_gain = widgets.FloatText(
         value=gain,
         description='Gain',
-        layout=widgets.Layout(width='100px'),
+        layout=widgets.Layout(width='150px'),
         style=style)
     
     w_eV0 = widgets.FloatText(
         value=eV0,
         description='eV0',
-        layout=widgets.Layout(width='100px'),
+        layout=widgets.Layout(width='150px'),
         style=style)    
     
     w_is_ipysheet = widgets.Checkbox(
         value=is_ipysheet,
         style=style,
+        layout=widgets.Layout(width='150px'),
         description='Use ipysheet')
   
     w_delimiter = widgets.Text(
@@ -474,109 +546,214 @@ def Display_widgets(scan, expt):
 
     w_fitstuck_limit = widgets.IntText(
         value=fitstuck_limit,
-        description='Iter. limit',
-        layout=widgets.Layout(width='100px'),
+        description='Limit iter.',
+        layout=widgets.Layout(width='150px'),
         style=style)
 
+    # Fit params: boolean
     w_is_fast = widgets.Checkbox(
         value=is_fast,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='Fast extract')    
 
     w_is_gammaA = widgets.Checkbox(
         value='gammaA' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='gammaA')  
 
     w_is_gammaB = widgets.Checkbox(
         value='gammaB' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='gammaB')  
 
     w_is_fA = widgets.Checkbox(
         value='fA' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='fA')
 
     w_is_fB = widgets.Checkbox(
         value='fB' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='fB')
 
     w_is_fG = widgets.Checkbox(
         value='fG' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='fG')
 
     w_is_twc0 = widgets.Checkbox(
         value='twc0' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='twc0')
 
     w_is_twc1 = widgets.Checkbox(
         value='twc1' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='twc1')
 
     w_is_tfb1 = widgets.Checkbox(
         value='tfb1' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='tfb1')
 
     w_is_tfb0 = widgets.Checkbox(
         value='tfb0' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='tfb0')
 
     w_is_sfa0 = widgets.Checkbox(
         value='sfa0' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='sfa0')
 
     w_is_sfa1 = widgets.Checkbox(
         value='sfa1' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='sfa1')
 
     w_is_sl = widgets.Checkbox(
         value='sl' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='sl')
 
     w_is_ct = widgets.Checkbox(
         value='ct' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='ct')
 
     w_is_noise = widgets.Checkbox(
         value='noise' in list_isfit,
         style=style,
+        layout=widgets.Layout(width='100px'),
         description='noise')
 
+    # Fit params: value
+    w_gammaA = widgets.FloatText(
+        value=gammaA,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='gammaA')  
+
+    w_gammaB = widgets.FloatText(
+        value=gammaB,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='gammaB')  
+
+    w_fA = widgets.FloatText(
+        value=fA,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='fA')
+
+    w_fB = widgets.FloatText(
+        value=fB,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='fB')
+
+    w_fG = widgets.FloatText(
+        value=fG,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='fG')
+
+    w_twc0 = widgets.FloatText(
+        value=twc0,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='twc0')
+
+    w_twc1 = widgets.FloatText(
+        value=twc1,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='twc1')
+
+    w_tfb1 = widgets.FloatText(
+        value=tfb1,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='tfb1')
+
+    w_tfb0 = widgets.FloatText(
+        value=tfb0,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='tfb0')
+
+    w_sfa0 = widgets.FloatText(
+        value=sfa0,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='sfa0')
+
+    w_sfa1 = widgets.FloatText(
+        value=sfa1,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='sfa1')
+
+    w_sl = widgets.FloatText(
+        value=sl,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='sl')
+
+    w_ct = widgets.FloatText(
+        value=ct,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='ct')
+
+    w_noise = widgets.FloatText(
+        value=noise,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='noise')    
+    
     button_extract = widgets.Button(description="Extract the scan",layout=widgets.Layout(width='500px'))
     button_extract.on_click(on_button_extract_clicked)
 
     display(widgets.HBox([w_ind_first_channel, w_ind_last_channel, w_ind_first_spectrum, w_ind_last_spectrum]))
-    
+    print("-"*100)    
+    print("List of available elements: ", ["Element %s"%s for s in fluospectrums_available])
+
     w_fluospectrum = widgets.HBox([w_is_fluospectrum00, w_is_fluospectrum01,w_is_fluospectrum02,
                                    w_is_fluospectrum03,w_is_fluospectrum04])  
     display(w_fluospectrum)
+   
+    display(widgets.HBox([w_is_sl, w_is_ct, w_is_noise, w_is_sfa0, w_is_sfa1, w_is_tfb0, w_is_tfb1 ]))
+    display(widgets.HBox([w_is_twc0, w_is_twc1, w_is_fG, w_is_fA, w_is_fB, w_is_gammaA,w_is_gammaB]))   
+    
+    display(widgets.HBox([w_sl, w_ct, w_noise, w_fG]))
+    display(widgets.HBox([w_sfa0, w_sfa1, w_tfb0, w_tfb1]))
+    display(widgets.HBox([w_twc0, w_twc1]))
+    display(widgets.HBox([w_fA, w_fB, w_gammaA,w_gammaB]))  
+
+    print("-"*100)
     display(widgets.HBox([w_gain, w_eV0, w_delimiter, w_fitstuck_limit, w_is_ipysheet, w_is_fast]))
 
-    display(widgets.HBox([w_is_sl, w_is_ct, w_is_noise, w_is_sfa0, w_is_sfa1, w_is_tfb0, w_is_tfb1 ]))
-    display(widgets.HBox([w_is_twc0, w_is_twc1, w_is_fG, w_is_fA, w_is_fB, w_is_gammaA,w_is_gammaB]))    
-    
     display(widgets.HBox([button_extract]))
     
 
-    return scan 
-
-
-
-
         
 
-def Define_scan_identifiers(scan, expt):
+def Define_scan_identifiers(expt):
     """
     Create a series of identifiers for the current scan.
     """
@@ -586,39 +763,26 @@ def Define_scan_identifiers(scan, expt):
     # scan.id = 'SIRIUS_2017_12_11_08042'
     # scan.number = 8042
     
-    scan.path = expt.recording_dir+scan.nxs
-    scan.id = scan.nxs[:-4]
-    split_name = scan.nxs.split('.')[0].split('_')
-    scan.number = int(scan.nxs.split('.')[0].split('_')[-1])
+    expt.path = expt.recording_dir+expt.nxs
+    expt.id = expt.nxs[:-4]
+    split_name = expt.nxs.split('.')[0].split('_')
+    expt.number = int(expt.nxs.split('.')[0].split('_')[-1])
 
 
-def Extract_nexus(scan):
+def Extract_nexus(expt):
     """
     1) Extract all the requested fluospectrums in the nexus file.
     2) Correct with ICR/OCR.
     3) Sum the fluospectrums and put them in scan.allspectrums_corr
     """
     
-    scan.nexus = PN.PyNexusFile(scan.path, fast=scan.is_fast)
+    expt.nexus = PN.PyNexusFile(expt.path, fast=expt.is_fast)
 
-    # Number of spectrums taken during the scan
-    scan.nb_allspectrums = scan.nexus.get_nbpts()
+    stamps, data= expt.nexus.extractData()
 
-    stamps, data= scan.nexus.extractData()
-
-    fluospectrums_available = []
-    for i in range(len(stamps)):
-        if (stamps[i][1] != None and "fluospectrum0" in stamps[i][1].lower()):
-            fluospectrums_available.append(stamps[i][1].lower()[-1])
-
-    print("List of available elements: ", ["Element %s"%s for s in fluospectrums_available])
-
-    scan.fluospectrums_chosen = np.array([scan.is_fluospectrum00,scan.is_fluospectrum01,
-                                     scan.is_fluospectrum02,scan.is_fluospectrum03, scan.is_fluospectrum04])
-    tmp = np.array([0,1,2,3,4])
-    print("List of chosen elements: ", ["Element %g"%g for g in tmp[scan.fluospectrums_chosen]])
-
-
+    expt.fluospectrums_chosen = np.array([expt.is_fluospectrum00,expt.is_fluospectrum01,
+                                     expt.is_fluospectrum02,expt.is_fluospectrum03, expt.is_fluospectrum04])
+ 
     def extract_and_correct(ind_spectrum):
         """Extract the requested fluospectrum from the nexus file and correct it with ICR/OCR"""
 
@@ -646,61 +810,61 @@ def Extract_nexus(scan):
         return spectrums_corr
 
     # Correct each chosen fluospectrum with ICR/OCR and sum them
-    allspectrums_corr = np.zeros((scan.nb_allspectrums, 2048))
+    allspectrums_corr = np.zeros((expt.nb_allspectrums, 2048))
 
-    if scan.is_fluospectrum00:
+    if expt.is_fluospectrum00:
         fluospectrum00 = extract_and_correct('0')
         allspectrums_corr  = allspectrums_corr  + fluospectrum00
-    if scan.is_fluospectrum01:
+    if expt.is_fluospectrum01:
         fluospectrum01 = extract_and_correct('1')
         allspectrums_corr  = allspectrums_corr  + fluospectrum01
-    if scan.is_fluospectrum02:
+    if expt.is_fluospectrum02:
         fluospectrum02 = extract_and_correct('2')
         allspectrums_corr  = allspectrums_corr  + fluospectrum02
-    if scan.is_fluospectrum03:
+    if expt.is_fluospectrum03:
         fluospectrum03 = extract_and_correct('3')
         allspectrums_corr  = allspectrums_corr  + fluospectrum03
-    if scan.is_fluospectrum04:
+    if expt.is_fluospectrum04:
         fluospectrum04 = extract_and_correct('4')
         allspectrums_corr  = allspectrums_corr  + fluospectrum04
 
-    scan.allspectrums_corr = allspectrums_corr
-    scan.nexus.close()
+    expt.allspectrums_corr = allspectrums_corr
+    expt.nexus.close()
 
-def Define_subsets(scan):
+def Define_subsets(expt):
     """
     Select spectrums and channel range for the fits.
     """
     
     # Look for subsets of consecutive non-empty spectrums
-    ind_non_zero_spectrums = np.where(np.sum(scan.allspectrums_corr, axis = 1)>10.)[0]
+    ind_non_zero_spectrums = np.where(np.sum(expt.allspectrums_corr, axis = 1)>10.)[0]
     list_ranges = np.split(ind_non_zero_spectrums, np.where(np.diff(ind_non_zero_spectrums) != 1)[0]+1)
-    scan.last_non_zero_spectrum = ind_non_zero_spectrums[-1]
+    expt.last_non_zero_spectrum = ind_non_zero_spectrums[-1]
 
     #for ranges in list_ranges:
         #print('Recommended spectrum range: [%g:%g]'%(ranges[0],ranges[-1]))
     print('File empty after spectrum %g.'%ind_non_zero_spectrums[-1])
 
     # Subset of channels and spectrums defined by user
-    scan.channels = np.arange(scan.ind_first_channel, scan.ind_last_channel+1)
-    scan.spectrums = scan.allspectrums_corr[scan.ind_first_spectrum:scan.ind_last_spectrum+1,
-                                            scan.ind_first_channel:scan.ind_last_channel+1]
+    expt.channels = np.arange(expt.ind_first_channel, expt.ind_last_channel+1)
+    expt.spectrums = expt.allspectrums_corr[expt.ind_first_spectrum:expt.ind_last_spectrum+1,
+                                                      expt.ind_first_channel:expt.ind_last_channel+1]
 
-def Plot_subsets(scan):
+def Plot_subsets(expt):
     """
     Plot the whole spectrum range (stopping at the last non-zero spectrum).
     Used to check which subset the user wants.
     """
     
     fig = plt.figure(figsize=(12,6))
-    fig.suptitle(scan.nxs, fontsize=14)
+    fig.suptitle(expt.nxs, fontsize=14)
     ax1 = fig.add_subplot(111)
     ax1.set_title('All the spectrums in the file (stopping at the last non-zero spectrum)')
     ax1.set(xlabel = 'spectrum index', ylabel = 'channel')
-    ax1.set_xlim(left = -1, right = scan.last_non_zero_spectrum+1)
-    ax1.axvline(scan.ind_first_spectrum, linestyle = '--', color = 'y', label = 'Selected spectrum range')
-    ax1.axvline(scan.ind_last_spectrum, linestyle = '--', color = 'y')
-    im1 = ax1.imshow(scan.allspectrums_corr.transpose(), cmap = 'viridis', aspect = 'auto', norm=mplcolors.LogNorm())
+    ax1.set_xlim(left = -1, right = expt.last_non_zero_spectrum+1)
+    ax1.axvline(expt.ind_first_spectrum, linestyle = '--', color = 'y', label = 'Selected spectrum range')
+    ax1.axvline(expt.ind_last_spectrum, linestyle = '--', color = 'y')
+    im1 = ax1.imshow(expt.allspectrums_corr.transpose(), cmap = 'viridis', aspect = 'auto', norm=mplcolors.LogNorm())
     plt.legend()
 
     # Plot the whole channel range
@@ -708,17 +872,17 @@ def Plot_subsets(scan):
     ax1 = fig.add_subplot(211)
     ax1.set_title('Whole range of channels on the sum of all spectrums')
     ax1.set(xlabel = 'channel', ylabel = 'counts')
-    ax1.axvline(scan.ind_first_channel, linestyle = '--', color = 'r', label = 'Selected channel range')
-    ax1.axvline(scan.ind_last_channel, linestyle = '--', color = 'r')
-    ax1.plot(np.arange(2048), scan.allspectrums_corr.sum(axis = 0), 'k.-')
+    ax1.axvline(expt.ind_first_channel, linestyle = '--', color = 'r', label = 'Selected channel range')
+    ax1.axvline(expt.ind_last_channel, linestyle = '--', color = 'r')
+    ax1.plot(np.arange(2048), expt.allspectrums_corr.sum(axis = 0), 'k.-')
     ax1.legend()
     plt.setp(ax1.get_xticklabels(), visible=False)
 
     ax2 = fig.add_subplot(212)
     ax2.set(xlabel = 'channel', ylabel = 'counts')
-    ax2.axvline(scan.ind_first_channel, linestyle = '--', color = 'r')
-    ax2.axvline(scan.ind_last_channel, linestyle = '--', color = 'r')
-    ax2.plot(np.arange(2048), scan.allspectrums_corr.sum(axis = 0), 'k.-')
+    ax2.axvline(expt.ind_first_channel, linestyle = '--', color = 'r')
+    ax2.axvline(expt.ind_last_channel, linestyle = '--', color = 'r')
+    ax2.plot(np.arange(2048), expt.allspectrums_corr.sum(axis = 0), 'k.-')
     ax2.set_yscale('log')
     ax2.set_ylim(bottom = 1)
     yticks = ax1.yaxis.get_major_ticks()
@@ -729,40 +893,40 @@ def Plot_subsets(scan):
     fig = plt.figure(figsize=(12,6))
     fig.suptitle('SELECTED RANGES', fontsize=14)
     ax1 = fig.add_subplot(111)
-    ax1.set_title('Subset of spectrums [%g:%g]'%(scan.ind_first_spectrum,scan.ind_last_spectrum))
+    ax1.set_title('Subset of spectrums [%g:%g]'%(expt.ind_first_spectrum,expt.ind_last_spectrum))
     ax1.set(xlabel = 'spectrum index', ylabel = 'channel')
-    im1 = ax1.imshow(scan.spectrums.transpose(), cmap = 'viridis', aspect = 'auto', norm=mplcolors.LogNorm(),
+    im1 = ax1.imshow(expt.spectrums.transpose(), cmap = 'viridis', aspect = 'auto', norm=mplcolors.LogNorm(),
                      interpolation='none',
-                     extent=[scan.ind_first_spectrum,scan.ind_last_spectrum,
-                             scan.ind_last_channel,scan.ind_first_channel])
+                     extent=[expt.ind_first_spectrum,expt.ind_last_spectrum,
+                             expt.ind_last_channel,expt.ind_first_channel])
 
     #Plot the selected channel range
     fig = plt.figure(figsize=(12,8))
     ax1 = fig.add_subplot(211)
-    ax1.set_title('Subset of channels [%g:%g]'%(scan.ind_first_channel,scan.ind_last_channel))
+    ax1.set_title('Subset of channels [%g:%g]'%(expt.ind_first_channel,expt.ind_last_channel))
     ax1.set(xlabel = 'channel', ylabel = 'counts')
-    ax1.plot(scan.channels, scan.spectrums[0], 'r-', label = 'Spectrum %g'%scan.ind_first_spectrum)
-    ax1.plot(scan.channels, scan.spectrums[-1], 'b-', label = 'Spectrum %g'%scan.ind_last_spectrum)
+    ax1.plot(expt.channels, expt.spectrums[0], 'r-', label = 'Spectrum %g'%expt.ind_first_spectrum)
+    ax1.plot(expt.channels, expt.spectrums[-1], 'b-', label = 'Spectrum %g'%expt.ind_last_spectrum)
     ax1.legend()
     plt.setp(ax1.get_xticklabels(), visible=False)
 
     ax2 = fig.add_subplot(212)
     ax2.set(xlabel = 'channel', ylabel = 'counts')
-    ax2.plot(scan.channels, scan.spectrums[0], 'r-')
-    ax2.plot(scan.channels, scan.spectrums[-1], 'b-')
+    ax2.plot(expt.channels, expt.spectrums[0], 'r-')
+    ax2.plot(expt.channels, expt.spectrums[-1], 'b-')
     ax2.set_yscale('log')
     ax2.set_ylim(bottom = 1)
     yticks = ax1.yaxis.get_major_ticks()
     yticks[-1].label1.set_visible(False)
     plt.subplots_adjust(hspace=.0)
 
-    if np.sum(scan.spectrums[0])<10.:
+    if np.sum(expt.spectrums[0])<10.:
         CBOLD = '\033[1m'
         CEND = '\033[0m'
         print(CBOLD + 'ERROR: The first spectrum cannot be empty!!!' + CEND)
 
 
-def Define_peaks(scan, expt):
+def Define_peaks(expt):
     """
     1) Check if the csv file Peaks.csv exists, if not create it with an example.
     2) If ipysheet is activated, display the interactive sheet. If not, extract the peaks from Peaks.csv
@@ -776,21 +940,21 @@ def Define_peaks(scan, expt):
     arr_peaks = np.array([])
 
     # Check if the csv file already exists, if not copy the DefaultPeaks.csv file
-    if not os.path.isfile(expt.working_dir+scan.id+'/Peaks.csv'):
-        shutil.copy('DefaultPeaks.csv', expt.working_dir+scan.id+'/Peaks.csv')
+    if not os.path.isfile(expt.working_dir+expt.id+'/Peaks.csv'):
+        shutil.copy('DefaultPeaks.csv', expt.working_dir+expt.id+'/Peaks.csv')
 
-    with open(expt.working_dir+scan.id+'/Peaks.csv', "r") as f:
+    with open(expt.working_dir+expt.id+'/Peaks.csv', "r") as f:
         csvreader = csv.reader(f, delimiter=expt.delimiter)
         # First line is the header
-        scan.peaks_header = next(csvreader)
-        nb_columns = len(scan.peaks_header)
+        expt.peaks_header = next(csvreader)
+        nb_columns = len(expt.peaks_header)
         for row in csvreader:
             arr_peaks = np.append(arr_peaks, row)
     arr_peaks = np.reshape(arr_peaks, (len(arr_peaks)//nb_columns,nb_columns))
 
 
     if expt.is_ipysheet:
-        sheet = ipysheet.easy.sheet(columns=nb_columns, rows=nb_rows ,column_headers = scan.peaks_header)
+        sheet = ipysheet.easy.sheet(columns=nb_columns, rows=nb_rows ,column_headers = expt.peaks_header)
 
         # ipysheet does not work correctly with None entries
         # It is necessary to fill first the cells with something
@@ -804,21 +968,21 @@ def Define_peaks(scan, expt):
         display(sheet)
 
     else:
-        print("Peaks imported from %s"%(expt.working_dir+scan.id+'/Peaks.csv'))
-        print('\t'.join([str(cell) for cell in scan.peaks_header]))
+        print("Peaks imported from %s"%(expt.working_dir+expt.id+'/Peaks.csv'))
+        print('\t'.join([str(cell) for cell in expt.peaks_header]))
         print('\n'.join(['\t \t'.join([str(cell) for cell in row]) for row in arr_peaks if row[0]!='']))
 
 
-    scan.arr_peaks = arr_peaks
+    expt.arr_peaks = arr_peaks
 
-def Extract_elems(scan, expt):
+def Extract_elems(expt):
     """
     1) Validate the current sheet if using ipysheet
     2) Create objects Elem and Lines from info in scan.arr_peaks
     """
     # 1) Validate the current sheet if using ipysheet
     if expt.is_ipysheet:
-        Validate_sheet(scan, expt)
+        Validate_sheet(expt)
 
     # 2) Create objects Elem and Lines from info in arr_peaks
     # Each "Peak name" gives a new Elem with Elem.name = "Peak name"
@@ -828,33 +992,33 @@ def Extract_elems(scan, expt):
     # The array scan.elems contains the list of objects Elem
 
     # Remove the peaks which are not fitted from scan.arr_peaks
-    scan.arr_peaks = scan.arr_peaks[np.where(scan.arr_peaks[:,4]!='no')]
+    expt.arr_peaks = expt.arr_peaks[np.where(expt.arr_peaks[:,4]!='no')]
 
     elems = []
-    for i in range(np.shape(scan.arr_peaks)[0]):
-        elem_name = scan.arr_peaks[i][0]
-        if (elem_name != '' and elem_name != scan.arr_peaks[i-1][0]):
+    for i in range(np.shape(expt.arr_peaks)[0]):
+        elem_name = expt.arr_peaks[i][0]
+        if (elem_name != '' and elem_name != expt.arr_peaks[i-1][0]):
             newElem = Elem(elem_name)
             elems = np.append(elems, newElem)
             elems[-1].lines = []
 
-    for i in range(np.shape(scan.arr_peaks)[0]):
-        elem_name = scan.arr_peaks[i][0]
+    for i in range(np.shape(expt.arr_peaks)[0]):
+        elem_name = expt.arr_peaks[i][0]
         for elem in elems:
             if elem.name == elem_name:
-                if scan.arr_peaks[i][3] == 'yes':
+                if expt.arr_peaks[i][3] == 'yes':
                     is_fitpos = True
                 else:
                     is_fitpos = False
-                elem.newLine = Line(name = str(scan.arr_peaks[i][1]),
-                                    position_i = float(scan.arr_peaks[i][2]),
+                elem.newLine = Line(name = str(expt.arr_peaks[i][1]),
+                                    position_i = float(expt.arr_peaks[i][2]),
                                     is_fitpos = is_fitpos)
                 elem.lines = np.append(elem.lines, elem.newLine)
 
-    scan.elems = elems
+    expt.elems = elems
 
 
-def Validate_sheet(scan, expt):
+def Validate_sheet(expt):
     """
     Validate the info in the current sheet by transferring them to scan.arr_peaks and save them in Peaks.csv
     """
@@ -862,21 +1026,21 @@ def Validate_sheet(scan, expt):
     # Collect the info from the sheet, store them in arr_peaks, write to Peaks.csv
     arr_peaks = ipysheet.numpy_loader.to_array(ipysheet.easy.current())
 
-    with open(expt.working_dir+scan.id+'/Peaks.csv', "w", newline='') as f:
+    with open(expt.working_dir+expt.id+'/Peaks.csv', "w", newline='') as f:
         writer = csv.writer(f,delimiter=expt.delimiter)
-        writer.writerow(scan.peaks_header)
+        writer.writerow(expt.peaks_header)
         writer.writerows(arr_peaks)
 
     # String to print the peaks
-    prt_peaks = '\t'.join([str(cell) for cell in scan.peaks_header])+'\n'
+    prt_peaks = '\t'.join([str(cell) for cell in expt.peaks_header])+'\n'
     prt_peaks += '\n'.join(['\t \t'.join([str(cell) for cell in row]) for row in arr_peaks if row[0]!=''])+'\n'
-    prt_peaks += "Peaks saved in:\n%s"%(expt.working_dir+scan.id+'/Peaks.csv')
+    prt_peaks += "Peaks saved in:\n%s"%(expt.working_dir+expt.id+'/Peaks.csv')
 
-    scan.arr_peaks = arr_peaks
-    scan.prt_peaks = prt_peaks
+    expt.arr_peaks = arr_peaks
+    expt.prt_peaks = prt_peaks
 
 
-def Display_peaks(scan, expt, spectrum_index=0):
+def Display_peaks(expt, spectrum_index=0):
     """
     1) Define initial guesses for the relative amplitudes of each lines from each elem, used later in the fit.
     2) Plot the position of each peaks on the given spectrum spectrum_index.
@@ -884,13 +1048,13 @@ def Display_peaks(scan, expt, spectrum_index=0):
     """
 
     # Convert channels into eV
-    scan.eV = scan.channels*expt.gain + expt.eV0
+    expt.eV = expt.channels*expt.gain + expt.eV0
 
-    eV = scan.eV
-    elems = scan.elems
+    eV = expt.eV
+    elems = expt.elems
 
     # We work on the spectrum specified by spectrum_index
-    spectrum = scan.spectrums[spectrum_index]
+    spectrum = expt.spectrums[spectrum_index]
 
     # 1) Define initial guesses for the relative amplitudes
     # Get each peak approx. intensity (intensity at the given peak position)
@@ -917,22 +1081,22 @@ def Display_peaks(scan, expt, spectrum_index=0):
 
 
     # 2) Plot the spectrum and each line given by the user
-    Plot_spectrum(scan, expt, spectrum_index=spectrum_index)
+    Plot_spectrum(expt, spectrum_index=spectrum_index)
 
-    if expt.is_ipysheet: print(scan.prt_peaks)
+    if expt.is_ipysheet: print(expt.prt_peaks)
 
 
-def Plot_spectrum(scan, expt, spectrum_index=0, dparams_list=None, is_save=False):
+def Plot_spectrum(expt, spectrum_index=0, dparams_list=None, is_save=False):
     """
     Plot data of a specific spectrum (given by spectrum_index).
     If a dparams_list is given, redo and plot the fit with the given parameters.
     If is_save, save the plots in png and the fitting curve in spectrum_X_fit.csv
     """
     n = spectrum_index
-    eV = scan.eV
-    elems = scan.elems
+    eV = expt.eV
+    elems = expt.elems
 
-    spectrum = scan.spectrums[n]
+    spectrum = expt.spectrums[n]
 
     if dparams_list != None:
         sl_list = dparams_list['sl_list']
@@ -995,12 +1159,12 @@ def Plot_spectrum(scan, expt, spectrum_index=0, dparams_list=None, is_save=False
     
     plt.subplots_adjust(hspace=.0)
     fig.subplots_adjust(top=0.95)
-    fig.suptitle(scan.nxs+': Spectrum number %g/%g'%(n,(len(scan.spectrums)-1)), fontsize=14)
+    fig.suptitle(expt.nxs+': Spectrum number %g/%g'%(n,(len(expt.spectrums)-1)), fontsize=14)
 
     if is_save:
         delimiter = expt.delimiter
-        plt.savefig(expt.working_dir+scan.id+'/spectrum_'+str(spectrum_index)+'_fit.png')
-        np.savetxt(str(expt.working_dir+scan.id+'/spectrum_'+str(spectrum_index)+'_fit.csv'),
+        plt.savefig(expt.working_dir+expt.id+'/spectrum_'+str(spectrum_index)+'_fit.png')
+        np.savetxt(str(expt.working_dir+expt.id+'/spectrum_'+str(spectrum_index)+'_fit.csv'),
                    np.transpose([eV, spectrum, spectrum_fit]),
                    header = '#eV'+delimiter+'#spectrum'+delimiter+'#spectrum_fit',
                    delimiter = delimiter,
@@ -1067,14 +1231,14 @@ def Plot_spectrum(scan, expt, spectrum_index=0, dparams_list=None, is_save=False
         plt.show()  
             
 
-def Plot_fit_results(scan, expt, spectrum_index=None, dparams_list=None, is_save=False):
+def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False):
     """
     Plot all the params in dparams_list, as a function of the spectrum.
     If spectrum_index is given, plot its position on each plot.
     If is_save, save each plot in a png.
     """
-    elems = scan.elems
-    spectrums = scan.spectrums
+    elems = expt.elems
+    spectrums = expt.spectrums
 
     scans = np.arange(np.shape(spectrums)[0])
     
@@ -1085,7 +1249,7 @@ def Plot_fit_results(scan, expt, spectrum_index=None, dparams_list=None, is_save
         ax.yaxis.set_major_formatter(FormatStrFormatter('%g'))
         plt.plot(scans, elem.area_list, 'r.-', label = 'Area %s'%elem.name)
         plt.legend()
-        if is_save: plt.savefig(expt.working_dir+scan.id+'/area_'+elem.name+'.png')
+        if is_save: plt.savefig(expt.working_dir+expt.id+'/area_'+elem.name+'.png')
         if spectrum_index!=None: plt.axvline(x = spectrum_index, linestyle = '--', color = 'black')
         if is_title: 
             ax.set_title('PEAK AREA\n')
@@ -1103,7 +1267,7 @@ def Plot_fit_results(scan, expt, spectrum_index=None, dparams_list=None, is_save
                 ax.yaxis.set_major_formatter(FormatStrFormatter('%g'))
                 plt.plot(scans, line.position_list, 'b.-', label = 'Position %s '%(elem.name+'.'+line.name))
                 plt.legend()
-                if is_save: plt.savefig(expt.working_dir+scan.id+'/position_'+elem.name+line.name+'.png')
+                if is_save: plt.savefig(expt.working_dir+expt.id+'/position_'+elem.name+line.name+'.png')
                 if is_title:
                     ax.set_title('PEAK POSITION\n')
                     ax.title.set_fontsize(18)
@@ -1121,7 +1285,7 @@ def Plot_fit_results(scan, expt, spectrum_index=None, dparams_list=None, is_save
             ax.yaxis.set_major_formatter(FormatStrFormatter('%g'))
             plt.plot(scans, dparams_list[name], 'k.-', label = name[:-5])
             plt.legend()
-            if is_save: plt.savefig(expt.working_dir+scan.id+'/'+str(name[:-5])+'.png')
+            if is_save: plt.savefig(expt.working_dir+expt.id+'/'+str(name[:-5])+'.png')
             if is_title:
                 ax.set_title('OTHER PARAMETERS\n')
                 ax.title.set_fontsize(18)
@@ -1141,20 +1305,20 @@ def Choose_spectrum_to_plot():
 
     def on_button_clicked(b):
         """Validate the values when the button is clicked."""
-        code = 'FF.Load_results(scan, expt, spectrum_index='+str(w_spectrum_index.value)+', is_save='+str(w_is_save.value)+')'
+        code = 'FF.Load_results(expt, spectrum_index='+str(w_spectrum_index.value)+', is_save='+str(w_is_save.value)+')'
         Create_cell(code=code, position='below', celltype='code', is_print=True, is_execute=True)
 
     button = widgets.Button(description="Click to plot",layout=widgets.Layout(width='300px', height='40px'))
     display(button)
     button.on_click(on_button_clicked)
             
-def Load_results(scan, expt, spectrum_index=0, is_save=False):
+def Load_results(expt, spectrum_index=0, is_save=False):
     """
     Load and plot the results of a previous fit.
     If is_save, save the fitting curve as a csv and as a png.
     Read the result from FitResults.csv
     """
-    elems = scan.elems
+    elems = expt.elems
 
     if is_save:
         print('Saved: spectrum_'+str(spectrum_index)+'_fig.csv')
@@ -1176,7 +1340,7 @@ def Load_results(scan, expt, spectrum_index=0, is_save=False):
             line.position_list = np.array([])
 
 
-    with open(expt.working_dir+scan.id+'/FitResults.csv', "r") as f:
+    with open(expt.working_dir+expt.id+'/FitResults.csv', "r") as f:
         reader = csv.DictReader(f, delimiter=expt.delimiter)
         for row in reader:
             for elem in elems:
@@ -1192,11 +1356,11 @@ def Load_results(scan, expt, spectrum_index=0, is_save=False):
                     dparams_list[name] = np.append(dparams_list[name], np.float(row['#'+name[:-5]].replace(',','.')))
 
 
-    print("Fit results for %s"%scan.nxs)
-    print("Spectrum interval = [%g,%g]"%(scan.ind_first_spectrum,scan.ind_last_spectrum))
-    print("Channel interval = [%g,%g]"%(scan.ind_first_channel,scan.ind_last_channel))
+    print("Fit results for %s"%expt.nxs)
+    print("Spectrum interval = [%g,%g]"%(expt.ind_first_spectrum,expt.ind_last_spectrum))
+    print("Channel interval = [%g,%g]"%(expt.ind_first_channel,expt.ind_last_channel))
     tmp = np.array([0,1,2,3,4])
-    print("List of chosen elements: ", ["Element %g"%g for g in tmp[scan.fluospectrums_chosen]])
+    print("List of chosen elements: ", ["Element %g"%g for g in tmp[expt.fluospectrums_chosen]])
     print("")
     print("Parameters used:")
     print("gain = %g"%expt.gain +"; eV0 = %g"%expt.eV0)
@@ -1218,8 +1382,8 @@ def Load_results(scan, expt, spectrum_index=0, is_save=False):
     # To generate pdf plots for the PDF rendering
     set_matplotlib_formats('png', 'pdf') 
     
-    Plot_spectrum(scan, expt, spectrum_index, dparams_list,  is_save)
-    Plot_fit_results(scan, expt, spectrum_index, dparams_list, is_save)
+    Plot_spectrum(expt, spectrum_index, dparams_list,  is_save)
+    Plot_fit_results(expt, spectrum_index, dparams_list, is_save)
     
     # Restore it to png only to avoid large file size
     set_matplotlib_formats('png') 
