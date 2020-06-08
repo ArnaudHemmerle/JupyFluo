@@ -339,16 +339,20 @@ def Display_widgets(expt):
         expt.fB = w_fB.value
         expt.gammaA = w_gammaA.value
         expt.gammaB = w_gammaB.value
+        expt.epsilon = w_epsilon.value
+        expt.fano = w_fano.value
         
         # Particular case of list_isfit, going from str to array
         list_isfit = ['sl'*w_is_sl.value, 'ct'*w_is_ct.value, 'noise'*w_is_noise.value,
-              'sfa0'*w_is_sfa0.value, 'sfa1'*w_is_sfa1.value, 'tfb0'*w_is_tfb0.value, 'tfb1'*w_is_tfb1.value,
-              'twc0'*w_is_twc0.value, 'twc1'*w_is_twc1.value, 'fG'*w_is_fG.value,
-              'fA'*w_is_fA.value, 'fB'*w_is_fB.value, 'gammaA'*w_is_gammaA.value, 'gammaB'*w_is_gammaB.value]
+                      'sfa0'*w_is_sfa0.value, 'sfa1'*w_is_sfa1.value, 'tfb0'*w_is_tfb0.value, 'tfb1'*w_is_tfb1.value,
+                      'twc0'*w_is_twc0.value, 'twc1'*w_is_twc1.value, 'fG'*w_is_fG.value,
+                      'fA'*w_is_fA.value, 'fB'*w_is_fB.value, 'gammaA'*w_is_gammaA.value, 'gammaB'*w_is_gammaB.value,
+                      'epsilon'*w_is_epsilon.value, 'fano'*w_is_fano.value]
 
         while("" in list_isfit) : 
             list_isfit.remove("")
            
+        expt.list_isfit = list_isfit
         expt.list_isfit_str = ','.join(list_isfit)
         
         
@@ -386,7 +390,9 @@ def Display_widgets(expt):
                     'fA',
                     'fB',
                     'gammaA',
-                    'gammaB'
+                    'gammaB',
+                    'epsilon',
+                    'fano'
                     ])
             writer.writerow(header)
             
@@ -420,7 +426,9 @@ def Display_widgets(expt):
                     expt.fA,
                     expt.fB,
                     expt.gammaA,
-                    expt.gammaB
+                    expt.gammaB,
+                    expt.epsilon,
+                    expt.fano
                     ])
 
 
@@ -458,6 +466,8 @@ def Display_widgets(expt):
             fB = float(row['fB'].replace(',', '.'))
             gammaA = float(row['gammaA'].replace(',', '.'))
             gammaB = float(row['gammaB'].replace(',', '.'))
+            epsilon = float(row['epsilon'].replace(',', '.'))
+            fano = float(row['fano'].replace(',', '.'))
        
     # convert list_isfit_str into a list
     list_isfit = [str(list_isfit_str.split(',')[i]) for i in range(len(list_isfit_str.split(',')))]
@@ -641,6 +651,18 @@ def Display_widgets(expt):
         layout=widgets.Layout(width='100px'),
         description='noise')
 
+    w_is_epsilon = widgets.Checkbox(
+        value='epsilon' in list_isfit,
+        style=style,
+        layout=widgets.Layout(width='100px'),
+        description='epsilon')
+    
+    w_is_fano = widgets.Checkbox(
+        value='fano' in list_isfit,
+        style=style,
+        layout=widgets.Layout(width='100px'),
+        description='fano')
+    
     # Fit params: value
     w_gammaA = widgets.FloatText(
         value=gammaA,
@@ -726,6 +748,18 @@ def Display_widgets(expt):
         layout=widgets.Layout(width='200px'),
         description='noise')    
     
+    w_epsilon = widgets.FloatText(
+        value=epsilon,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='epsilon')  
+    
+    w_fano = widgets.FloatText(
+        value=fano,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='fano')  
+    
     button_extract = widgets.Button(description="Extract the scan",layout=widgets.Layout(width='500px'))
     button_extract.on_click(on_button_extract_clicked)
 
@@ -737,12 +771,12 @@ def Display_widgets(expt):
                                    w_is_fluospectrum03,w_is_fluospectrum04])  
     display(w_fluospectrum)
    
-    display(widgets.HBox([w_is_sl, w_is_ct, w_is_noise, w_is_sfa0, w_is_sfa1, w_is_tfb0, w_is_tfb1 ]))
-    display(widgets.HBox([w_is_twc0, w_is_twc1, w_is_fG, w_is_fA, w_is_fB, w_is_gammaA,w_is_gammaB]))   
+    display(widgets.HBox([w_is_sl, w_is_ct, w_is_noise, w_is_sfa0, w_is_sfa1, w_is_tfb0, w_is_tfb1,w_is_twc0]))
+    display(widgets.HBox([w_is_twc1, w_is_fG, w_is_fA, w_is_fB, w_is_gammaA,w_is_gammaB, w_is_epsilon, w_is_fano]))   
     
     display(widgets.HBox([w_sl, w_ct, w_noise, w_fG]))
     display(widgets.HBox([w_sfa0, w_sfa1, w_tfb0, w_tfb1]))
-    display(widgets.HBox([w_twc0, w_twc1]))
+    display(widgets.HBox([w_twc0, w_twc1, w_epsilon, w_fano]))
     display(widgets.HBox([w_fA, w_fB, w_gammaA,w_gammaB]))  
 
     print("-"*100)
@@ -1327,7 +1361,7 @@ def Load_results(expt, spectrum_index=0, is_save=False):
     dparams_list = {'sl_list','ct_list',
                     'sfa0_list','sfa1_list','tfb0_list','tfb1_list',
                     'twc0_list','twc1_list',
-                    'noise_list','fan_list', 'epsilon_list',
+                    'noise_list','fano_list', 'epsilon_list',
                     'fG_list','fA_list','fB_list','gammaA_list','gammaB_list'}
 
     # Init all the lists
@@ -1367,15 +1401,15 @@ def Load_results(expt, spectrum_index=0, is_save=False):
     print("List of fitted parameters: "+str(expt.list_isfit))
     print("")
     print("Initial fit parameters:")
-    print("epsilon = %g"%expt.dparams_fit['epsilon']+"; fan = %g"%expt.dparams_fit['fan']+
-          "; noise = %g"%expt.dparams_fit['noise'])
-    print("sl = %g"%expt.dparams_fit['sl'] +"; ct = %g"%expt.dparams_fit['ct'])
-    print("sfa0 = %g"%expt.dparams_fit['sfa0']+"; sfa1 = %g"%expt.dparams_fit['sfa1']+
-          "; tfb0 = %g"%expt.dparams_fit['tfb0']+"; tfb1 = %g"%expt.dparams_fit['tfb1'])
-    print("twc0 = %g"%expt.dparams_fit['twc0']+"; twc1 = %g"%expt.dparams_fit['twc1'])
-    print("fG = %g"%expt.dparams_fit['fG'])
-    print("fA = %g"%expt.dparams_fit['fA']+"; fB = %g"%expt.dparams_fit['fB']+
-          "; gammaA = %g"%expt.dparams_fit['gammaA']+"; gammaB = %g"%expt.dparams_fit['gammaB'])
+    print("epsilon = %g"%expt.epsilon+"; fano = %g"%expt.fano+
+          "; noise = %g"%expt.noise)
+    print("sl = %g"%expt.sl+"; ct = %g"%expt.ct)
+    print("sfa0 = %g"%expt.sfa0+"; sfa1 = %g"%expt.sfa1+
+          "; tfb0 = %g"%expt.tfb0+"; tfb1 = %g"%expt.tfb1)
+    print("twc0 = %g"%expt.twc0+"; twc1 = %g"%expt.twc1)
+    print("fG = %g"%expt.fG)
+    print("fA = %g"%expt.fA+"; fB = %g"%expt.fB+
+          "; gammaA = %g"%expt.gammaA+"; gammaB = %g"%expt.gammaB)
     print("")
     
         
