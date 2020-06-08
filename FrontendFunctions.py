@@ -29,13 +29,20 @@ except:
 
 
     
-__version__="0.4"
+__version__="0.5"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
 i.e. the widgets (buttons, interactive plots), the self-generation of cells, conversion and saving of files ...
 -Arguments are passed from the Notebook through objects belonging to the classes Experiment and Scan only.
 """
+
+
+# General parameters for layout and style of widgets
+layout_100 = widgets.Layout(width='100px', height='40px')
+layout_200 = widgets.Layout(width='200px', height='40px')
+layout_500 = widgets.Layout(width='500px', height='40px')
+style = {'description_width': 'initial'}
 
 def Print_version():
     print("Versions of modules used:")
@@ -169,9 +176,8 @@ def Generate_cells_on_click(expt):
         else:
             print("There was something wrong with the export to pdf. Please try again.")
     
-    layout = widgets.Layout(width='200px', height='40px')
-    button_generate = widgets.Button(description="Start analysis", layout=layout)
-    button_export = widgets.Button(description="Export to pdf", layout=layout)
+    button_generate = widgets.Button(description="Start analysis", layout=layout_200)
+    button_export = widgets.Button(description="Export to pdf", layout=layout_200)
     
     display(widgets.HBox([button_generate, button_export]))
     button_generate.on_click(on_button_generate_clicked)
@@ -216,10 +222,11 @@ def Export_nb_to_pdf(nb_name):
 
 class Scan:
     """
-    Contains all the info on the scan analyzed.
+    Class Scan is used to pass arguments concerning the current scan only.
     """
     def __init__(self):
         pass
+
 
 
 def Define_scan(expt):
@@ -232,105 +239,65 @@ def Define_scan(expt):
     # Create an object for the current scan
     scan = Scan()
 
-    
+    # Create the list of nxs files in the folder
     expt.list_nxs_files = [file for file in sorted(os.listdir(expt.recording_dir)) if 'nxs' in file][::-1]
     if expt.list_nxs_files == []:
         print(PN._RED+'There is no nexus file in the recording folder.'+PN._RESET)
         print(PN._RED+'Recording folder: %s'%expt.recording_dir+PN._RESET)
         expt.list_nxs_files = ['SIRIUS_NoFileFound_00_00_00.nxs']
             
-    layout = widgets.Layout(width='500px', height='40px')
-    style = {'description_width': 'initial'}
-
-    # Select a single scan and print the corresponding command
-    w_select_scan = widgets.Dropdown(
-        options=expt.list_nxs_files,
-        description='Select scan:',
-        layout=widgets.Layout(width='400px'),
-        style=style)
-
-    w_ind_first_spectrum = widgets.IntText(
-        value=expt.ind_first_spectrum,
-        step=1,
-        description='First spectrum:',
-        style=style)
-
-    w_ind_last_spectrum = widgets.IntText(
-        value=expt.ind_last_spectrum,
-        step=1,
-        description='Last spectrum:',
-        style=style)
-
-    w_ind_first_channel = widgets.BoundedIntText(
-        value=expt.ind_first_channel,
-        min=0,
-        max=2048,
-        step=1,
-        description='First channel:',
-        style=style)
-
-    w_ind_last_channel = widgets.BoundedIntText(
-        value=expt.ind_last_channel,
-        min=0,
-        max=2048,
-        step=1,
-        description='Last channel:',
-        style=style)
-
-    w_is_fluospectrum00 = widgets.Checkbox(
-        value=expt.is_elements[0],
-        description='Element 0')
-
-    w_is_fluospectrum01 = widgets.Checkbox(
-        value=expt.is_elements[1],
-        description='Element 1')
-
-    w_is_fluospectrum02 = widgets.Checkbox(
-        value=expt.is_elements[2],
-        description='Element 2')
-
-    w_is_fluospectrum03 = widgets.Checkbox(
-        value=expt.is_elements[3],
-        description='Element 3')
-
-    w_is_fluospectrum04 = widgets.Checkbox(
-        value=expt.is_elements[4],
-        description='Element 4')
-
-    
-    w_fluospectrum = widgets.HBox([w_is_fluospectrum00, w_is_fluospectrum01,w_is_fluospectrum02,
-                                  w_is_fluospectrum03,w_is_fluospectrum04])
-
-    w_ind_channel = widgets.HBox([w_ind_first_channel, w_ind_last_channel])
-    w_ind_spectrum = widgets.HBox([w_ind_first_spectrum, w_ind_last_spectrum])
-    display(w_select_scan, w_ind_spectrum, w_ind_channel, w_fluospectrum)
-
-    def on_button_clicked(b):
-        """Validate the values when the button is clicked."""
-
+    def on_button_choose_scan_clicked(b): 
+     
         # Generate several identifiers for the scan
         scan.nxs = w_select_scan.value
         Define_scan_identifiers(scan, expt)
 
         # Create a folder for saving params and results, if it does not already exist.
         if not os.path.exists(expt.working_dir+scan.id):
-            os.mkdir(expt.working_dir+scan.id)
+            os.mkdir(expt.working_dir+scan.id)   
+            
+        Display_widgets(scan, expt)
 
-        scan.is_fluospectrum00 = w_is_fluospectrum00.value
-        scan.is_fluospectrum01 = w_is_fluospectrum01.value
-        scan.is_fluospectrum02 = w_is_fluospectrum02.value
-        scan.is_fluospectrum03 = w_is_fluospectrum03.value
-        scan.is_fluospectrum04 = w_is_fluospectrum04.value
+    w_select_scan = widgets.Dropdown(
+        options=expt.list_nxs_files,
+        description='Select scan:',
+        layout=widgets.Layout(width='400px'),
+        style=style)
+        
+        
+    button_choose_scan = widgets.Button(description="OK",layout=widgets.Layout(width='100px'))
+    button_choose_scan.on_click(on_button_choose_scan_clicked)
+    
+    display(widgets.HBox([w_select_scan, button_choose_scan]))
 
-        scan.ind_first_spectrum = w_ind_first_spectrum.value
-        scan.ind_last_spectrum = w_ind_last_spectrum.value
-        scan.ind_first_channel = w_ind_first_channel.value
-        scan.ind_last_channel = w_ind_last_channel.value
 
+def Display_widgets(scan, expt):    
+      
+    # Load the scan info from file
+    with open(expt.working_dir+scan.id+'/Parameters.csv', "r") as f:
+        reader = csv.DictReader(f, delimiter=';')
+        for row in reader:
+            is_fluospectrum00=eval(row['is_fluospectrum00'])
+            is_fluospectrum01=eval(row['is_fluospectrum01'])
+            is_fluospectrum02=eval(row['is_fluospectrum02'])
+            is_fluospectrum03=eval(row['is_fluospectrum03'])
+            is_fluospectrum04=eval(row['is_fluospectrum04'])
+            ind_first_channel=int(row['ind_first_channel'])
+            ind_last_channel=int(row['ind_last_channel'])
+            ind_first_spectrum=int(row['ind_first_spectrum'])
+            ind_last_spectrum=int(row['ind_last_spectrum'])
+    
+    
+    def on_button_extract_clicked(b):
+        """Extract the scan."""
+
+        update_params()
+        
         # Clear the plots and reput the boxes
         clear_output(wait=True)
-        display(w_select_scan, w_ind_spectrum, w_ind_channel, w_fluospectrum)
-        display(button)
+        #display(widgets.HBox([w_ind_spectrum]))
+        #display(widgets.HBox([button_extract,button_modify_params]))
+        Display_widgets(scan, expt)
         
         # Load the file
         Extract_nexus(scan)
@@ -341,13 +308,126 @@ def Define_scan(expt):
         # Define and plot the channels and spectrums subsets
         Define_subsets(scan)
         Plot_subsets(scan)
+
+    def update_params():
+        """Update the parameters with the current values"""
+            
+        scan.is_fluospectrum00 = w_is_fluospectrum00.value
+        scan.is_fluospectrum01 = w_is_fluospectrum01.value
+        scan.is_fluospectrum02 = w_is_fluospectrum02.value
+        scan.is_fluospectrum03 = w_is_fluospectrum03.value
+        scan.is_fluospectrum04 = w_is_fluospectrum04.value
+            
+        scan.ind_first_channel = w_ind_first_channel.value
+        scan.ind_last_channel = w_ind_last_channel.value
+        
+        
+        scan.ind_first_spectrum = w_ind_first_spectrum.value
+        scan.ind_last_spectrum = w_ind_last_spectrum.value
+
+
+        
+        # Prepare the header of the csv file
+        with open(expt.working_dir+scan.id+'/Parameters.csv', "w", newline='') as f:
+            writer = csv.writer(f,delimiter=';')
+            header = np.array([
+                    'is_fluospectrum00',
+                    'is_fluospectrum01',
+                    'is_fluospectrum02',
+                    'is_fluospectrum03',
+                    'is_fluospectrum04',
+                    'ind_first_channel',
+                    'ind_last_channel',
+                    'ind_first_spectrum',
+                    'ind_last_spectrum',                
+                    ])
+            writer.writerow(header)
+            
+            writer.writerow([
+                    scan.is_fluospectrum00,
+                    scan.is_fluospectrum01,
+                    scan.is_fluospectrum02,
+                    scan.is_fluospectrum03,
+                    scan.is_fluospectrum04,
+                    scan.ind_first_channel,
+                    scan.ind_last_channel,
+                    scan.ind_first_spectrum,
+                    scan.ind_last_spectrum  
+                    ])
+
+        
+    w_is_fluospectrum00 = widgets.Checkbox(
+        value=is_fluospectrum00,
+        description='Element 0')
+
+    w_is_fluospectrum01 = widgets.Checkbox(
+        value=is_fluospectrum01,
+        description='Element 1')
+
+    w_is_fluospectrum02 = widgets.Checkbox(
+        value=is_fluospectrum02,
+        description='Element 2')
+
+    w_is_fluospectrum03 = widgets.Checkbox(
+        value=is_fluospectrum03,
+        description='Element 3')
+
+    w_is_fluospectrum04 = widgets.Checkbox(
+        value=is_fluospectrum04,
+        description='Element 4')
+
+    w_ind_first_channel = widgets.BoundedIntText(
+        value=ind_first_channel,
+        min=0,
+        max=2048,
+        step=1,
+        description='First channel:',
+        style=style)
+
+    w_ind_last_channel = widgets.BoundedIntText(
+        value=ind_last_channel,
+        min=0,
+        max=2048,
+        step=1,
+        description='Last channel:',
+        style=style)
+            
+    w_ind_first_spectrum = widgets.IntText(
+        value=ind_first_spectrum,
+        step=1,
+        description='First spectrum:',
+        layout=widgets.Layout(width='200px'),
+        style=style)
+
+    w_ind_last_spectrum = widgets.IntText(
+        value=ind_last_spectrum,
+        step=1,
+        description='Last spectrum:',
+        layout=widgets.Layout(width='200px'),
+        style=style)
+
+    w_ind_spectrum = widgets.HBox([w_ind_first_spectrum, w_ind_last_spectrum])
+    display(widgets.HBox([w_ind_spectrum]))
     
-    button = widgets.Button(description="Click to extract the scan",layout=layout)
-    display(button)
-    button.on_click(on_button_clicked)
+    button_extract = widgets.Button(description="Extract the scan",layout=layout_500)
+    button_extract.on_click(on_button_extract_clicked)
+    w_fluospectrum = widgets.HBox([w_is_fluospectrum00, w_is_fluospectrum01,w_is_fluospectrum02,
+                                  w_is_fluospectrum03,w_is_fluospectrum04])
+
+    w_ind_channel = widgets.HBox([w_ind_first_channel, w_ind_last_channel])
+            
+    display(w_fluospectrum, w_ind_channel)
+
+
+    display(widgets.HBox([button_extract]))
+    
+
     
     return scan
 
+
+
+        
 
 def Define_scan_identifiers(scan, expt):
     """
