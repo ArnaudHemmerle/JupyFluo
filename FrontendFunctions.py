@@ -175,7 +175,7 @@ def Generate_cells_on_click(expt):
         else:
             print("There was something wrong with the export to pdf. Please try again.")
     
-    button_generate = widgets.Button(description="Start analysis", layout=widgets.Layout(width='200px'))
+    button_generate = widgets.Button(description="Start new analysis", layout=widgets.Layout(width='200px'))
     button_export = widgets.Button(description="Export to pdf", layout=widgets.Layout(width='200px'))
     
     display(widgets.HBox([button_generate, button_export]))
@@ -809,16 +809,6 @@ def Extract_nexus(expt):
     2) Correct with ICR/OCR.
     3) Sum the fluospectrums and put them in scan.allspectrums_corr
     """
-    
-    expt.nexus = PN.PyNexusFile(expt.path, fast=expt.is_fast)
-
-    stamps, data= expt.nexus.extractData()
-    
-    # Extract timestamps
-    for i in range(len(stamps)):
-        if (stamps[i][1]== None and stamps[i][0]=='sensorsRelTimestamps'):
-            expt.allsensorsRelTimestamps = data[i]
-
             
     def extract_and_correct(ind_spectrum):
         """Extract the fluospectrum of index ind_spectrum from the nexus file and correct it with ICR/OCR"""
@@ -847,6 +837,15 @@ def Extract_nexus(expt):
 
         return spectrums_corr
 
+    expt.nexus = PN.PyNexusFile(expt.path, fast=expt.is_fast)
+
+    stamps, data= expt.nexus.extractData()
+    
+    # Extract timestamps
+    for i in range(len(stamps)):
+        if (stamps[i][1]== None and stamps[i][0]=='sensorsRelTimestamps'):
+            expt.allsensorsRelTimestamps = data[i]    
+    
     # Get the chosen fluospectrums        
     expt.fluospectrums_chosen = np.array([expt.is_fluospectrum00,expt.is_fluospectrum01,
                                      expt.is_fluospectrum02,expt.is_fluospectrum03, expt.is_fluospectrum04])
