@@ -87,6 +87,7 @@ def Fit_spectrums(expt, is_save=True):
     ##############   PREPARE SAVE   #####################
     #####################################################
     if is_save:
+        # Save the results (parameters)
         # Prepare the header of the csv file
         with open(expt.working_dir+expt.id+'/FitResults.csv', "w", newline='') as f:
             writer = csv.writer(f,delimiter=expt.delimiter)
@@ -102,7 +103,14 @@ def Fit_spectrums(expt, is_save=True):
 
             writer.writerow(header)
 
-
+    if is_save:
+        # Save the results (fits)
+        # Prepare the header of the csv file
+        with open(expt.working_dir+expt.id+'/FitSpectrums.csv', "w", newline='') as f:
+            writer = csv.writer(f,delimiter=expt.delimiter)
+            header = np.array(['#sensorsRelTimestamps', '#eV', '#data', '#fit'])
+            writer.writerow(header)
+            
     count=0
     for spectrum in expt.spectrums:
 
@@ -258,22 +266,8 @@ def Fit_spectrums(expt, is_save=True):
         # Update the dparams_list in expt
         expt.dparams_list = dparams_list
         
-        #####################################################
-        #####################   SAVE   ######################
-        #####################################################
-        if is_save:
-            with open(expt.working_dir+expt.id+'/FitResults.csv', 'a+', newline='') as f:
-                writer = csv.writer(f,delimiter=expt.delimiter)
-                tbw = np.array([], dtype='float')
-                for elem in elems:
-                    tbw = np.append(tbw,elem.area_list[-1])
-                    for line in elem.lines:
-                        tbw = np.append(tbw,line.intRel_list[-1])
-                        tbw = np.append(tbw,line.position_list[-1])
-                for name in dparams_list:
-                    tbw = np.append(tbw,dparams_list[name][-1])
-                writer.writerow(tbw)
 
+                
         #####################################################
         ###############   PLOT CURRENT FIT  #################
         #####################################################
@@ -320,8 +314,35 @@ def Fit_spectrums(expt, is_save=True):
         plt.subplots_adjust(hspace=.0)
         plt.show()
 
-        count+=1
+        
+        
+        #####################################################
+        #####################   SAVE   ######################
+        #####################################################
+        if is_save:
+            with open(expt.working_dir+expt.id+'/FitResults.csv', 'a+', newline='') as f:
+                writer = csv.writer(f,delimiter=expt.delimiter)
+                tbw = np.array([], dtype='float')
+                for elem in elems:
+                    tbw = np.append(tbw,elem.area_list[-1])
+                    for line in elem.lines:
+                        tbw = np.append(tbw,line.intRel_list[-1])
+                        tbw = np.append(tbw,line.position_list[-1])
+                for name in dparams_list:
+                    tbw = np.append(tbw,dparams_list[name][-1])
+                writer.writerow(tbw)
 
+        if is_save:
+            with open(expt.working_dir+expt.id+'/FitSpectrums.csv', 'a+', newline='') as f:
+                for i in range(len(eV)):
+                    writer = csv.writer(f,delimiter=expt.delimiter)
+                    tbw = [expt.sensorsRelTimestamps[count],
+                           np.round(eV[i],2),
+                           np.round(spectrum[i],2),
+                           np.round(spectrum_fit[i],2)]
+                    writer.writerow(tbw)                
+                
+        count+=1
     #####################################################
     ##################   PLOT PARAMS  ###################
     #####################################################

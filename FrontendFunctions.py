@@ -813,10 +813,13 @@ def Extract_nexus(expt):
     expt.nexus = PN.PyNexusFile(expt.path, fast=expt.is_fast)
 
     stamps, data= expt.nexus.extractData()
+    
+    # Extract timestamps
+    for i in range(len(stamps)):
+        if (stamps[i][1]== None and stamps[i][0]=='sensorsRelTimestamps'):
+            expt.allsensorsRelTimestamps = data[i]
 
-    expt.fluospectrums_chosen = np.array([expt.is_fluospectrum00,expt.is_fluospectrum01,
-                                     expt.is_fluospectrum02,expt.is_fluospectrum03, expt.is_fluospectrum04])
- 
+            
     def extract_and_correct(ind_spectrum):
         """Extract the requested fluospectrum from the nexus file and correct it with ICR/OCR"""
 
@@ -843,6 +846,11 @@ def Extract_nexus(expt):
 
         return spectrums_corr
 
+    # Get the chosen fluospectrums        
+    expt.fluospectrums_chosen = np.array([expt.is_fluospectrum00,expt.is_fluospectrum01,
+                                     expt.is_fluospectrum02,expt.is_fluospectrum03, expt.is_fluospectrum04])
+             
+            
     # Correct each chosen fluospectrum with ICR/OCR and sum them
     allspectrums_corr = np.zeros((expt.nb_allspectrums, 2048))
 
@@ -884,6 +892,9 @@ def Define_subsets(expt):
     expt.spectrums = expt.allspectrums_corr[expt.ind_first_spectrum:expt.ind_last_spectrum+1,
                                                       expt.ind_first_channel:expt.ind_last_channel+1]
 
+    # Subset of timestamps (for later saving of the data)
+    expt.sensorsRelTimestamps = expt.allsensorsRelTimestamps[expt.ind_first_spectrum:expt.ind_last_spectrum+1]
+    
 def Plot_subsets(expt):
     """
     Plot the whole spectrum range (stopping at the last non-zero spectrum).
@@ -1416,7 +1427,7 @@ def Load_results(expt, spectrum_index=0, is_save=False):
     # To generate pdf plots for the PDF rendering
     set_matplotlib_formats('png', 'pdf') 
     
-    Plot_spectrum(expt, spectrum_index, dparams_list,  is_save)
+    Plot_spectrum(expt, spectrum_index, dparams_list, is_save)
     Plot_fit_results(expt, spectrum_index, dparams_list, is_save)
     
     # Restore it to png only to avoid large file size
