@@ -16,7 +16,6 @@ from math import isclose
 import os
 import shutil
 import csv
-from psutil import virtual_memory as vm
 
 import base64
 from IPython.display import clear_output, Javascript, display, HTML
@@ -27,18 +26,17 @@ try:
 except:
     print('Careful: the module ipysheet is not installed!')
 
-
     
 __version__="0.5"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
 i.e. the widgets (buttons, interactive plots), the self-generation of cells, conversion and saving of files ...
--Arguments are passed from the Notebook through objects belonging to the classes Experiment and Scan only.
+-Arguments are passed from the Notebook through an belonging to the class Experiment only.
 """
 
 
-# General parameters for layout and style of widgets
+# General parameters for style of widgets
 style = {'description_width': 'initial'}
 
 def Print_version():
@@ -51,7 +49,6 @@ def Print_version():
     print("")
 
 def Check_files(expt):
-
 
     Print_version()
     
@@ -75,6 +72,11 @@ def Check_files(expt):
         print('DefaultPeaks.csv')
         print("This file contains the peaks to be displayed by default and should be placed in the same folder as the notebook.")
         print("")
+    if not os.path.exists('DefaultParameters.csv'):
+        print(PN._RED+"The following file does not exist:"+PN._RESET)
+        print('DefaultParameters.csv')
+        print("This file contains the parameters to be displayed by default and should be placed in the same folder as the notebook.")
+        print("")        
     if not os.path.exists('f-si'):
         print(PN._RED+"The following file does not exist:"+PN._RESET)
         print('f-si')
@@ -149,7 +151,7 @@ def Generate_cells_on_click(expt):
      'AF.Fit_spectrums(expt)', position, 'code', False, False],
     ['## Show the results on a given spectrum', position, 'markdown', False, True],
     ['# Run this cell\n'+\
-     'FF.Choose_spectrum_to_plot()', position,'code', False, False],
+     'FF.Choose_spectrum_to_plot(expt)', position,'code', False, False],
     ['FF.Generate_cells_on_click(expt)', position, 'code', False, True]
     ]
 
@@ -197,7 +199,7 @@ def Export_nb_to_pdf(nb_name):
     t0 = time.time()
     rc = 1
     while rc>0:
-        if (time.time()-t0) > 100:
+        if (time.time()-t0) > 300:
             # Timeout before PDF export is considered as failed
             export_done = False
             break
@@ -228,9 +230,8 @@ class Scan:
 
 def Define_scan(expt):
     """
-    1) Define the object Scan.
-    2) Create widgets to allow for user to enter required params.
-    3) Execute the spectrum extraction when clicking on the button.
+    1) Create widgets to allow for user to enter required params.
+    2) Execute the spectrum extraction when clicking on the button.
     """
 
     # Create the list of nxs files in the folder
@@ -261,8 +262,7 @@ def Define_scan(expt):
         description='Select scan:',
         layout=widgets.Layout(width='400px'),
         style=style)
-        
-        
+              
     button_choose_scan = widgets.Button(description="OK",layout=widgets.Layout(width='100px'))
     button_choose_scan.on_click(on_button_choose_scan_clicked)
     
@@ -270,7 +270,8 @@ def Define_scan(expt):
 
 
 def Display_widgets(expt):    
-
+    """Display the widgets and collect the info."""
+    
     # Quick extraction of scan info
     nexus = PN.PyNexusFile(expt.path)
     
@@ -785,17 +786,16 @@ def Display_widgets(expt):
     display(widgets.HBox([button_extract]))
     
 
-        
-
+       
 def Define_scan_identifiers(expt):
     """
     Create a series of identifiers for the current scan.
     """
     # For example:
-    # scan.nxs = 'SIRIUS_2017_12_11_08042.nxs'
-    # scan.path = '/Users/arnaudhemmerle/recording/SIRIUS_2017_12_11_08042.nxs'
-    # scan.id = 'SIRIUS_2017_12_11_08042'
-    # scan.number = 8042
+    # expt.nxs = 'SIRIUS_2017_12_11_08042.nxs'
+    # expt.path = '/Users/arnaudhemmerle/recording/SIRIUS_2017_12_11_08042.nxs'
+    # expt.id = 'SIRIUS_2017_12_11_08042'
+    # expt.number = 8042
     
     expt.path = expt.recording_dir+expt.nxs
     expt.id = expt.nxs[:-4]
@@ -805,7 +805,7 @@ def Define_scan_identifiers(expt):
 
 def Extract_nexus(expt):
     """
-    1) Extract all the requested fluospectrums in the nexus file.
+    1) Extract all the chosen fluospectrums in the nexus file.
     2) Correct with ICR/OCR.
     3) Sum the fluospectrums and put them in scan.allspectrums_corr
     """
@@ -821,7 +821,7 @@ def Extract_nexus(expt):
 
             
     def extract_and_correct(ind_spectrum):
-        """Extract the requested fluospectrum from the nexus file and correct it with ICR/OCR"""
+        """Extract the fluospectrum of index ind_spectrum from the nexus file and correct it with ICR/OCR"""
 
         for i in range(len(stamps)):
             if (stamps[i][1] != None and stamps[i][1].lower() == "fluoicr0"+ind_spectrum):
@@ -837,6 +837,7 @@ def Extract_nexus(expt):
         try:
             OCR = fluoocr
         except:
+            # If OCR is not in the data, calculate it.
             print(PN._RED+"OCR not found in data. Taking OCR = spectrum_intensity/counting_time."+PN._RESET)
             OCR = np.array([np.sum(fluospectrum[n])/integration_time[n] for n in range(len(fluospectrum))])
                
@@ -968,12 +969,13 @@ def Plot_subsets(expt):
     if np.sum(expt.spectrums[0])<10.:
         CBOLD = '\033[1m'
         CEND = '\033[0m'
+        # The fitting procedure requires that the first five spectrums are not empty
         print(CBOLD + 'ERROR: The first spectrum cannot be empty!!!' + CEND)
 
 
 def Define_peaks(expt):
     """
-    1) Check if the csv file Peaks.csv exists, if not create it with an example.
+    1) Check if the csv file Peaks.csv exists, if not copy DefaultPeaks.csv in the expt folder
     2) If ipysheet is activated, display the interactive sheet. If not, extract the peaks from Peaks.csv
     3) Save the peaks in Peaks.csv
     Update scan.arr_peaks, with the info on the peaks later used to create the Elem and Lines objects.
@@ -1016,7 +1018,6 @@ def Define_peaks(expt):
         print("Peaks imported from %s"%(expt.working_dir+expt.id+'/Peaks.csv'))
         print('\t'.join([str(cell) for cell in expt.peaks_header]))
         print('\n'.join(['\t \t'.join([str(cell) for cell in row]) for row in arr_peaks if row[0]!='']))
-
 
     expt.arr_peaks = arr_peaks
 
@@ -1131,11 +1132,10 @@ def Display_peaks(expt, spectrum_index=0):
     if expt.is_ipysheet: print(expt.prt_peaks)
 
 
-def Plot_spectrum(expt, spectrum_index=0, dparams_list=None, is_save=False):
+def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
     """
     Plot data of a specific spectrum (given by spectrum_index).
     If a dparams_list is given, redo and plot the fit with the given parameters.
-    If is_save, save the plots in png and the fitting curve in spectrum_X_fit.csv
     """
     n = spectrum_index
     eV = expt.eV
@@ -1206,17 +1206,6 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None, is_save=False):
     fig.subplots_adjust(top=0.95)
     fig.suptitle(expt.nxs+': Spectrum number %g/%g'%(n,(len(expt.spectrums)-1)), fontsize=14)
 
-    if is_save:
-        delimiter = expt.delimiter
-        plt.savefig(expt.working_dir+expt.id+'/spectrum_'+str(spectrum_index)+'_fit.png')
-        np.savetxt(str(expt.working_dir+expt.id+'/spectrum_'+str(spectrum_index)+'_fit.csv'),
-                   np.transpose([eV, spectrum, spectrum_fit]),
-                   header = '#eV'+delimiter+'#spectrum'+delimiter+'#spectrum_fit',
-                   delimiter = delimiter,
-                   comments = ''
-                  )
-    plt.show()
-    plt.close()
 
     # Plot each peak
     colors = iter(['r', 'b', 'y', 'c', 'm', 'g', 'orange', 'brown']*20)
@@ -1339,35 +1328,31 @@ def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False
             if spectrum_index!=None: plt.axvline(x = spectrum_index, linestyle = '--', color = 'black')
             plt.show()
 
-def Choose_spectrum_to_plot():
+def Choose_spectrum_to_plot(expt):
     """
     Select a spectrum to plot with its fit.
     """
-    w_spectrum_index = widgets.IntText(value=0, step=1, description='Spectrum:')
-    w_is_save = widgets.Checkbox(value=False, description='Save Fit?')
-
-    display(widgets.HBox([w_spectrum_index,w_is_save]))
 
     def on_button_clicked(b):
         """Validate the values when the button is clicked."""
-        code = 'FF.Load_results(expt, spectrum_index='+str(w_spectrum_index.value)+', is_save='+str(w_is_save.value)+')'
+        clear_output(wait=True)
+        code = 'FF.Load_results(expt, spectrum_index='+str(w.kwargs['spectrum_index'])+')'
         Create_cell(code=code, position='below', celltype='code', is_print=True, is_execute=True)
 
-    button = widgets.Button(description="Click to plot",layout=widgets.Layout(width='300px', height='40px'))
+    button = widgets.Button(description="Add plot to report",layout=widgets.Layout(width='300px', height='40px'))
     display(button)
     button.on_click(on_button_clicked)
+
+    w = widgets.interactive(Load_results, expt=widgets.fixed(expt),
+                            spectrum_index=widgets.IntText(value=0, step=1, description='Spectrum:'))
+    display(w)
             
-def Load_results(expt, spectrum_index=0, is_save=False):
+def Load_results(expt, spectrum_index=0):
     """
     Load and plot the results of a previous fit.
-    If is_save, save the fitting curve as a csv and as a png.
-    Read the result from FitResults.csv
+    Redo the fit with all the results from FitResults.csv
     """
     elems = expt.elems
-
-    if is_save:
-        print('Saved: spectrum_'+str(spectrum_index)+'_fig.csv')
-        print('Saved: spectrum_'+str(spectrum_index)+'_fit.png')
 
     dparams_list = {'sl_list','ct_list',
                     'sfa0_list','sfa1_list','tfb0_list','tfb1_list',
@@ -1427,8 +1412,8 @@ def Load_results(expt, spectrum_index=0, is_save=False):
     # To generate pdf plots for the PDF rendering
     set_matplotlib_formats('png', 'pdf') 
     
-    Plot_spectrum(expt, spectrum_index, dparams_list, is_save)
-    Plot_fit_results(expt, spectrum_index, dparams_list, is_save)
+    Plot_spectrum(expt, spectrum_index, dparams_list)
+    Plot_fit_results(expt, spectrum_index, dparams_list, is_save=False)
     
     # Restore it to png only to avoid large file size
     set_matplotlib_formats('png') 

@@ -334,13 +334,14 @@ def Fit_spectrums(expt, is_save=True):
         #####################################################
         #####################   SAVE   ######################
         #####################################################
+
+        # Save the results from the fit
         if is_save:
             
-            # Save the results from the fit
-            
+            # Saving FitResults
             # Array to be written
             tbw = np.array([], dtype='float')
-            
+
             # Put the data0D
             for i in range(len(data0D)):
                  tbw = np.append(tbw, data0D[i][expt.ind_first_spectrum+count])
@@ -353,12 +354,12 @@ def Fit_spectrums(expt, is_save=True):
                     tbw = np.append(tbw,line.position_list[-1])
             for name in dparams_list:
                 tbw = np.append(tbw,dparams_list[name][-1])    
-                           
+
             with open(expt.working_dir+expt.id+'/FitResults.csv', 'a+', newline='') as f:
                 writer = csv.writer(f,delimiter=expt.delimiter)
                 writer.writerow(tbw)
 
-        if is_save:
+            # Saving FitSpectrums
             with open(expt.working_dir+expt.id+'/FitSpectrums.csv', 'a+', newline='') as f:
                 for i in range(len(eV)):
                     writer = csv.writer(f,delimiter=expt.delimiter)
@@ -367,7 +368,7 @@ def Fit_spectrums(expt, is_save=True):
                            np.round(spectrum[i],2),
                            np.round(spectrum_fit[i],2)]
                     writer.writerow(tbw)                
-                
+
         count+=1
     #####################################################
     ##################   PLOT PARAMS  ###################
