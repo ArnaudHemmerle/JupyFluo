@@ -88,27 +88,42 @@ def Fit_spectrums(expt, is_save=True):
     #####################################################
     if is_save:
         # Save the results (parameters)
+        
+        # Extract the 0D stamps and data
+        nexus = PN.PyNexusFile(expt.path)
+        stamps0D, data0D = nexus.extractData('0D')
+        nexus.close()
+        
         # Prepare the header of the csv file
+        header = np.array([])
+        
+        # Data stamps
+        for i in range(len(stamps0D)):
+             if (stamps0D[i][1]==None):
+                    header =np.append(header, '#'+stamps0D[i][0])
+             else:
+                    header =np.append(header, '#'+stamps0D[i][1])
+        
+        # Stamps from the fit            
+        for elem in elems:
+            header = np.append(header, '#'+elem.name+'.area')
+            for line in elem.lines:
+                header = np.append(header,'#'+elem.name+'.'+line.name+'.intRel')
+                header = np.append(header,'#'+elem.name+'.'+line.name+'.position')
+
+        for name in dparams_list:
+            header = np.append(header, '#'+name[:-5])                    
+                    
         with open(expt.working_dir+expt.id+'/FitResults.csv', "w", newline='') as f:
             writer = csv.writer(f,delimiter=expt.delimiter)
-            header = np.array([])
-            for elem in elems:
-                header = np.append(header, '#'+elem.name+'.area')
-                for line in elem.lines:
-                    header = np.append(header,'#'+elem.name+'.'+line.name+'.intRel')
-                    header = np.append(header,'#'+elem.name+'.'+line.name+'.position')
-
-            for name in dparams_list:
-                header = np.append(header, '#'+name[:-5])
-
             writer.writerow(header)
 
     if is_save:
         # Save the results (fits)
         # Prepare the header of the csv file
+        header = np.array(['#sensorsRelTimestamps', '#eV', '#data', '#fit'])
         with open(expt.working_dir+expt.id+'/FitSpectrums.csv', "w", newline='') as f:
-            writer = csv.writer(f,delimiter=expt.delimiter)
-            header = np.array(['#sensorsRelTimestamps', '#eV', '#data', '#fit'])
+            writer = csv.writer(f,delimiter=expt.delimiter)       
             writer.writerow(header)
             
     count=0
@@ -320,16 +335,27 @@ def Fit_spectrums(expt, is_save=True):
         #####################   SAVE   ######################
         #####################################################
         if is_save:
+            
+            # Save the results from the fit
+            
+            # Array to be written
+            tbw = np.array([], dtype='float')
+            
+            # Put the data0D
+            for i in range(len(data0D)):
+                 tbw = np.append(tbw, data0D[i][expt.ind_first_spectrum+count])
+
+            # Put the results from the fit
+            for elem in elems:
+                tbw = np.append(tbw,elem.area_list[-1])
+                for line in elem.lines:
+                    tbw = np.append(tbw,line.intRel_list[-1])
+                    tbw = np.append(tbw,line.position_list[-1])
+            for name in dparams_list:
+                tbw = np.append(tbw,dparams_list[name][-1])    
+                           
             with open(expt.working_dir+expt.id+'/FitResults.csv', 'a+', newline='') as f:
                 writer = csv.writer(f,delimiter=expt.delimiter)
-                tbw = np.array([], dtype='float')
-                for elem in elems:
-                    tbw = np.append(tbw,elem.area_list[-1])
-                    for line in elem.lines:
-                        tbw = np.append(tbw,line.intRel_list[-1])
-                        tbw = np.append(tbw,line.position_list[-1])
-                for name in dparams_list:
-                    tbw = np.append(tbw,dparams_list[name][-1])
                 writer.writerow(tbw)
 
         if is_save:
