@@ -130,7 +130,7 @@ def Fit_spectrums(expt, is_save=True):
         #####################################################
 
         # Allow or not transmission of current fit params as init params for the next fit 
-        is_transmitted = False
+        is_transmitted = expt.is_transmitted
         if is_transmitted:
             # Initial guess for peak params
             if count==0:
@@ -184,7 +184,7 @@ def Fit_spectrums(expt, is_save=True):
                     dparams_lm.add('intRel_'+elem.name+'_'+line.name, value=1., vary=False)
                 else:
                     # The first curves are used to set the relative intensities
-                    if count < 5:
+                    if count < expt.nb_curves_intrel:
                         dparams_lm.add('intRel_'+elem.name+'_'+line.name, value=line.intRel_i,
                                        vary=elem.isfit_intRel, min = 0., max = 1.)
                     else:
@@ -263,7 +263,7 @@ def Fit_spectrums(expt, is_save=True):
                 elem.area_list = np.append(elem.area_list, result.params['area_'+elem.name].value)
 
                 for line in elem.lines:
-                    if count<5:
+                    if count<expt.nb_curves_intrel:
                         # The first fits are used to set the relative intensities
                         line.intRel_tmp = np.append(line.intRel_tmp, result.params['intRel_'+elem.name+'_'+line.name].value)
                         line.intRel = np.mean(line.intRel_tmp)

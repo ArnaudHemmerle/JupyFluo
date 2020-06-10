@@ -279,14 +279,14 @@ def Display_widgets(expt):
     expt.nb_allspectrums = nexus.get_nbpts()
     print("There are %g spectrums in the scan."%(expt.nb_allspectrums))
 
-
     # Extract list of detector elements available
     stamps = nexus.extractStamps()
     fluospectrums_available = []
     for i in range(len(stamps)):
         if (stamps[i][1] != None and "fluospectrum0" in stamps[i][1].lower()):
             fluospectrums_available.append(stamps[i][1].lower()[-1])
-    
+            
+    print("List of available elements: ", ["Element %s"%s for s in fluospectrums_available])
 
     def on_button_extract_clicked(b):
         """Extract the scan."""
@@ -342,6 +342,8 @@ def Display_widgets(expt):
         expt.gammaB = w_gammaB.value
         expt.epsilon = w_epsilon.value
         expt.fano = w_fano.value
+        expt.is_transmitted = w_is_transmitted.value
+        expt.nb_curves_intrel = w_nb_curves_intrel.value
         
         # Particular case of list_isfit, going from str to array
         list_isfit = ['sl'*w_is_sl.value, 'ct'*w_is_ct.value, 'noise'*w_is_noise.value,
@@ -393,7 +395,9 @@ def Display_widgets(expt):
                     'gammaA',
                     'gammaB',
                     'epsilon',
-                    'fano'
+                    'fano',
+                    'is_transmitted',
+                    'nb_curves_intrel'
                     ])
             writer.writerow(header)
             
@@ -429,7 +433,9 @@ def Display_widgets(expt):
                     expt.gammaA,
                     expt.gammaB,
                     expt.epsilon,
-                    expt.fano
+                    expt.fano,
+                    expt.is_transmitted,
+                    expt.nb_curves_intrel
                     ])
 
 
@@ -469,6 +475,8 @@ def Display_widgets(expt):
             gammaB = float(row['gammaB'].replace(',', '.'))
             epsilon = float(row['epsilon'].replace(',', '.'))
             fano = float(row['fano'].replace(',', '.'))
+            is_transmitted = eval(row['is_transmitted'])
+            nb_curves_intrel = int(row['nb_curves_intrel'])
        
     # convert list_isfit_str into a list
     list_isfit = [str(list_isfit_str.split(',')[i]) for i in range(len(list_isfit_str.split(',')))]
@@ -760,18 +768,31 @@ def Display_widgets(expt):
         style=style,
         layout=widgets.Layout(width='200px'),
         description='fano')  
+
+    w_is_transmitted = widgets.Checkbox(
+        value=is_transmitted,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='Transmit fit params')    
+    
+    w_nb_curves_intrel = widgets.IntText(
+        value=nb_curves_intrel,
+        step=1,
+        description='Nb curves intRel',
+        layout=widgets.Layout(width='200px'),
+        style=style)    
     
     button_extract = widgets.Button(description="Extract the scan",layout=widgets.Layout(width='500px'))
     button_extract.on_click(on_button_extract_clicked)
 
     display(widgets.HBox([w_ind_first_channel, w_ind_last_channel, w_ind_first_spectrum, w_ind_last_spectrum]))
-    print("-"*100)    
-    print("List of available elements: ", ["Element %s"%s for s in fluospectrums_available])
 
     w_fluospectrum = widgets.HBox([w_is_fluospectrum00, w_is_fluospectrum01,w_is_fluospectrum02,
                                    w_is_fluospectrum03,w_is_fluospectrum04])  
     display(w_fluospectrum)
-   
+
+    print("-"*100)      
+    # Fit params
     display(widgets.HBox([w_is_sl, w_is_ct, w_is_noise, w_is_sfa0, w_is_sfa1, w_is_tfb0, w_is_tfb1,w_is_twc0]))
     display(widgets.HBox([w_is_twc1, w_is_fG, w_is_fA, w_is_fB, w_is_gammaA,w_is_gammaB, w_is_epsilon, w_is_fano]))   
     
@@ -781,7 +802,8 @@ def Display_widgets(expt):
     display(widgets.HBox([w_fA, w_fB, w_gammaA,w_gammaB]))  
 
     print("-"*100)
-    display(widgets.HBox([w_gain, w_eV0, w_delimiter, w_fitstuck_limit, w_is_ipysheet, w_is_fast]))
+    display(widgets.HBox([w_gain, w_eV0, w_delimiter, w_fitstuck_limit, w_nb_curves_intrel]))
+    display(widgets.HBox([w_is_ipysheet, w_is_fast, w_is_transmitted]))
 
     display(widgets.HBox([button_extract]))
     
