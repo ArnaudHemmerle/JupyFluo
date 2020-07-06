@@ -27,7 +27,7 @@ except:
     print('Careful: the module ipysheet is not installed!')
 
     
-__version__="0.5"
+__version__="0.6"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
@@ -98,6 +98,9 @@ def Create_cell(code='', position='below', celltype='markdown', is_print=False, 
     The code requires direct use of Javascript and is thus not usable in Jupyter Lab.
     """
 
+    # Delay to ensure unique id
+    time.sleep(0.1)
+    
     encoded_code = (base64.b64encode(code.encode())).decode()
 
     # Create a unique id based on epoch time
