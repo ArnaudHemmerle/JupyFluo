@@ -346,6 +346,7 @@ def Display_widgets(expt):
         expt.epsilon = w_epsilon.value
         expt.fano = w_fano.value
         expt.is_transmitted = w_is_transmitted.value
+        expt.is_peaks_on_sum = w_is_peaks_on_sum.value
         expt.nb_curves_intrel = w_nb_curves_intrel.value
         
         # Particular case of list_isfit, going from str to array
@@ -400,6 +401,7 @@ def Display_widgets(expt):
                     'epsilon',
                     'fano',
                     'is_transmitted',
+                    'is_peaks_on_sum',
                     'nb_curves_intrel'
                     ])
             writer.writerow(header)
@@ -438,6 +440,7 @@ def Display_widgets(expt):
                     expt.epsilon,
                     expt.fano,
                     expt.is_transmitted,
+                    expt.is_peaks_on_sum,
                     expt.nb_curves_intrel
                     ])
 
@@ -479,6 +482,7 @@ def Display_widgets(expt):
             epsilon = float(row['epsilon'].replace(',', '.'))
             fano = float(row['fano'].replace(',', '.'))
             is_transmitted = eval(row['is_transmitted'])
+            is_peaks_on_sum = eval(row['is_peaks_on_sum'])
             nb_curves_intrel = int(row['nb_curves_intrel'])
        
     # convert list_isfit_str into a list
@@ -776,7 +780,13 @@ def Display_widgets(expt):
         value=is_transmitted,
         style=style,
         layout=widgets.Layout(width='200px'),
-        description='Transmit fit params')    
+        description='Transmit fit params')   
+    
+    w_is_peaks_on_sum = widgets.Checkbox(
+        value=is_peaks_on_sum,
+        style=style,
+        layout=widgets.Layout(width='200px'),
+        description='Define peaks on sum')       
     
     w_nb_curves_intrel = widgets.IntText(
         value=nb_curves_intrel,
@@ -806,7 +816,7 @@ def Display_widgets(expt):
 
     print("-"*100)
     display(widgets.HBox([w_gain, w_eV0, w_delimiter, w_fitstuck_limit, w_nb_curves_intrel]))
-    display(widgets.HBox([w_is_ipysheet, w_is_fast, w_is_transmitted]))
+    display(widgets.HBox([w_is_ipysheet, w_is_fast, w_is_transmitted, w_is_peaks_on_sum]))
 
     display(widgets.HBox([button_extract]))
     
@@ -1123,8 +1133,12 @@ def Display_peaks(expt, spectrum_index=0):
     eV = expt.eV
     elems = expt.elems
 
-    # We work on the spectrum specified by spectrum_index
-    spectrum = expt.spectrums[spectrum_index]
+    if expt.is_peaks_on_sum:
+        # We work on the sum to define the peaks
+        spectrum = np.sum(expt.spectrums, axis=0)
+    else:
+        # We work on the spectrum specified by spectrum_index
+        spectrum = expt.spectrums[spectrum_index]
 
     # 1) Define initial guesses for the relative amplitudes
     # Get each peak approx. intensity (intensity at the given peak position)
@@ -1165,8 +1179,19 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
     eV = expt.eV
     elems = expt.elems
 
-    spectrum = expt.spectrums[n]
-
+    if dparams_list != None:
+        # We work on the spectrum specified by spectrum_index
+        spectrum = expt.spectrums[n]
+    
+    else:
+        if expt.is_peaks_on_sum:
+            # We work on the sum to define the peaks
+            spectrum = np.sum(expt.spectrums, axis=0)
+        else:
+            # We work on the spectrum specified by spectrum_index
+            spectrum = expt.spectrums[n]
+        
+        
     if dparams_list != None:
         sl_list = dparams_list['sl_list']
         ct_list = dparams_list['ct_list']
@@ -1228,7 +1253,10 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
     
     plt.subplots_adjust(hspace=.0)
     fig.subplots_adjust(top=0.95)
-    fig.suptitle(expt.nxs+': Spectrum number %g/%g'%(n,(len(expt.spectrums)-1)), fontsize=14)
+    if (expt.is_peaks_on_sum and dparams_list==None):
+        fig.suptitle(expt.nxs+': Sum of spectrums', fontsize=14)
+    else:
+        fig.suptitle(expt.nxs+': Spectrum number %g/%g'%(n,(len(expt.spectrums)-1)), fontsize=14)
 
 
     # Plot each peak
