@@ -180,7 +180,7 @@ print(np.mean(expt.dparams_list['fG_list']))
 
 6. Repeat step 4-5 for ```tfb0```, giving for example ```tfb0 = 0.080845```.
 
-7. Repeat step 4-5 for ```twc0```, giving for example ```twc0 = 0.5164```.
+7. Repeat step 4-5 for ```twc0```, giving for example ```twc0 = 0.5164```. This parameter can be tricky to fit, you might try to fit it alone without ```sl, ct```.
 
 8. Repeat step 4-5 for ```twc1```, giving for example ```twc1 = 0.1003```.
 
