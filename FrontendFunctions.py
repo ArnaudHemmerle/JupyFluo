@@ -220,13 +220,13 @@ def Set_scan(expt):
         if not os.path.isfile(expt.working_dir+expt.id+'/Parameters.csv'):
             shutil.copy('DefaultParameters.csv', expt.working_dir+expt.id+'/Parameters.csv')    
             
-        # Set the info for the pannel generation
+        # Set the info for the panel generation
         expt.is_extract_done = False
         expt.is_fit_ready = False
         expt.is_fit_done = False
             
-        # Display the controm pannel
-        Display_pannel(expt)
+        # Display the controm panel
+        Display_panel(expt)
         
     w_select_scan = widgets.Dropdown(
         options=expt.list_nxs_files,
@@ -239,8 +239,8 @@ def Set_scan(expt):
     
     display(widgets.HBox([w_select_scan, button_choose_scan]))
 
-def Display_pannel(expt):
-    """Display the pannel to select the next step."""
+def Display_panel(expt):
+    """Display the panel to select the next step."""
     
     def on_button_new_scan_clicked(b):
         """Start the analysis of a new scan.""" 
@@ -280,7 +280,7 @@ def Display_pannel(expt):
 
         # Clear the plots and reput the boxes
         clear_output(wait=True)
-        Display_pannel(expt)
+        Display_panel(expt)
 
         # Reput the sheet set peaks
         Set_peaks(expt)
@@ -305,7 +305,7 @@ def Display_pannel(expt):
         expt.is_fit_done = True
         
         # Reput the boxes
-        Display_pannel(expt)
+        Display_panel(expt)
         
     def on_button_add_plot_clicked(b):
         """Create a new cell with the result to be added to the report."""
@@ -314,7 +314,7 @@ def Display_pannel(expt):
         
         # Clear the plots and reput the boxes
         clear_output(wait=True)
-        Display_pannel(expt)
+        Display_panel(expt)
 
     def on_button_extract_mean_clicked(b):
         """Extract the mean values of the fitted parameters."""   
@@ -526,7 +526,7 @@ def Set_params(expt):
         
         # Clear the plots and reput the boxes
         clear_output(wait=True)
-        Display_pannel(expt)
+        Display_panel(expt)
         
         # Load the file
         Extract_nexus(expt)
@@ -1284,7 +1284,7 @@ def Set_peaks(expt):
        
             # Clear the plots and reput the boxes
             clear_output(wait=True)
-            Display_pannel(expt)
+            Display_panel(expt)
             
             # Give the info that the set peaks was done
             expt.is_set_done = True
