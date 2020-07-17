@@ -27,7 +27,7 @@ except:
     print('Careful: the module ipysheet is not installed!')
 
     
-__version__="0.6"
+__version__="0.7"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
@@ -137,54 +137,16 @@ def Generate_cells_on_click(expt):
     celltype is a string, 'code' or 'markdown'
     is_execute is a boolean to tell if the cell should executed immediately after creation
     """
-    
+
     cells = [
     ['# New scan: replace by name', position, 'markdown', True, True],
     ['Describe the scan here.', position, 'markdown', True, True],
-    ['scan = FF.Define_scan(expt)', position, 'code', False, True],
-    ['## Peak definition', position, 'markdown', False, True],
-    ['# Run this cell\n'+\
-     'FF.Define_peaks(expt)', position, 'code', False, False],
-    ['# Run this cell\n'+\
-     'FF.Extract_elems(expt)\n'+\
-     'w = widgets.interact(FF.Display_peaks, expt=widgets.fixed(expt), spectrum_index=widgets.IntText(value=0, step=1, description=\'Spectrum:\'))'\
-     , position,'code', False, False],
-    ['## Fit the spectrums', position, 'markdown', False, True],
-    ['# Run this cell\n'+\
-     'AF.Fit_spectrums(expt)', position, 'code', False, False],
-    ['## Show the results on a given spectrum', position, 'markdown', False, True],
-    ['# Run this cell\n'+\
-     'FF.Choose_spectrum_to_plot(expt)', position,'code', False, False],
-    ['FF.Generate_cells_on_click(expt)', position, 'code', False, True]
+    ['scan = FF.Set_scan(expt)', position, 'code', False, True]
     ]
 
-    def on_button_generate_clicked(b):
-        """Generate the cells when clicked"""
-        
-        for cell in cells:
-            Create_cell(code=cell[0], position=cell[1], celltype=cell[2], is_print=cell[3], is_execute = cell[4])
-
-    def on_button_export_clicked(b):
-        """
-        Export the notebook to PDF.
-        """
-        
-        print('Export in progress...')
-        
-        export_done = Export_nb_to_pdf(expt.notebook_name)
-        
-        if export_done:
-            print('Notebook exported to %s.pdf'%expt.notebook_name.split('.')[0])
-        else:
-            print("There was something wrong with the export to pdf. Please try again.")
-    
-    button_generate = widgets.Button(description="Start new analysis", layout=widgets.Layout(width='200px'))
-    button_export = widgets.Button(description="Export to pdf", layout=widgets.Layout(width='200px'))
-    
-    display(widgets.HBox([button_generate, button_export]))
-    button_generate.on_click(on_button_generate_clicked)
-    button_export.on_click(on_button_export_clicked)
-
+    for cell in cells:
+        Create_cell(code=cell[0], position=cell[1], celltype=cell[2], is_print=cell[3], is_execute = cell[4])
+   
     
 def Export_nb_to_pdf(nb_name):
     """
@@ -231,7 +193,7 @@ class Scan:
 
 
 
-def Define_scan(expt):
+def Set_scan(expt):
     """
     1) Create widgets to allow for user to enter required params.
     2) Execute the spectrum extraction when clicking on the button.
@@ -248,7 +210,7 @@ def Define_scan(expt):
      
         # Generate several identifiers for the scan
         expt.nxs = w_select_scan.value
-        Define_scan_identifiers(expt)
+        Set_scan_identifiers(expt)
 
         # Create a folder for saving params and results, if it does not already exist.
         if not os.path.exists(expt.working_dir+expt.id):
@@ -258,8 +220,14 @@ def Define_scan(expt):
         if not os.path.isfile(expt.working_dir+expt.id+'/Parameters.csv'):
             shutil.copy('DefaultParameters.csv', expt.working_dir+expt.id+'/Parameters.csv')    
             
-        Display_widgets(expt)
-
+        # Set the info for the pannel generation
+        expt.is_extract_done = False
+        expt.is_fit_ready = False
+        expt.is_fit_done = False
+            
+        # Display the controm pannel
+        Display_pannel(expt)
+        
     w_select_scan = widgets.Dropdown(
         options=expt.list_nxs_files,
         description='Select scan:',
@@ -271,9 +239,265 @@ def Define_scan(expt):
     
     display(widgets.HBox([w_select_scan, button_choose_scan]))
 
+def Display_pannel(expt):
+    """Display the pannel to select the next step."""
+    
+    def on_button_new_scan_clicked(b):
+        """Start the analysis of a new scan.""" 
+        
+        clear_output(wait=True)
+        
+        Generate_cells_on_click(expt)
 
-def Display_widgets(expt):    
-    """Display the widgets and collect the info."""
+
+
+    def on_button_export_clicked(b):
+        """Export the notebook to PDF."""
+        
+        print('Export in progress...')
+        
+        export_done = Export_nb_to_pdf(expt.notebook_name)
+        
+        if export_done:
+            print('Notebook exported to %s.pdf'%expt.notebook_name.split('.')[0])
+        else:
+            print("There was something wrong with the export to pdf. Please try again.")        
+        
+        
+    def on_button_set_params_clicked(b):
+        """Set the parameters and extract the scan."""
+        
+        # Reset the buttons
+        expt.is_extract_done = False
+        expt.is_fit_ready = False
+        expt.is_fit_done = False
+        
+        # Set the parameters
+        Set_params(expt)
+        
+    def on_button_plot_peaks_clicked(b):
+        """Plot the peaks."""
+
+        # Clear the plots and reput the boxes
+        clear_output(wait=True)
+        Display_pannel(expt)
+
+        # Reput the sheet set peaks
+        Set_peaks(expt)
+
+        # Extract the info from the sheet
+        Extract_elems(expt)
+
+        # Selection of the spectrum to plot the peaks
+        w = widgets.interact(Display_peaks,
+                             expt=widgets.fixed(expt),
+                             spectrum_index=widgets.IntText(value=0, step=1, description='Spectrum:'))
+
+    def on_button_start_fit_clicked(b):
+        """Start the fit."""
+        
+        # Clear the plots
+        clear_output(wait=True)
+       
+        # Do the fit
+        AF.Fit_spectrums(expt)
+        
+        expt.is_fit_done = True
+        
+        # Reput the boxes
+        Display_pannel(expt)
+        
+    def on_button_add_plot_clicked(b):
+        """Create a new cell with the result to be added to the report."""
+        
+        Choose_spectrum_to_plot(expt)
+        
+        # Clear the plots and reput the boxes
+        clear_output(wait=True)
+        Display_pannel(expt)
+
+    def on_button_extract_mean_clicked(b):
+        """Extract the mean values of the fitted parameters."""   
+        
+        for name in expt.dparams_list:
+            if name[:-5] in expt.list_isfit:
+                  print(name[:-5], np.nanmean(expt.dparams_list[name]))
+                    
+                  if name[:-5] == 'sl':
+                      expt.sl = np.nanmean(expt.dparams_list[name])
+
+                  if name[:-5] == 'ct':
+                      expt.ct = np.nanmean(expt.dparams_list[name])                        
+                        
+                  if name[:-5] == 'noise':
+                      expt.noise = np.nanmean(expt.dparams_list[name])     
+                        
+                  if name[:-5] == 'sfa0':
+                      expt.sfa0 = np.nanmean(expt.dparams_list[name])   
+                        
+                  if name[:-5] == 'sfa1':
+                      expt.sfa1 = np.nanmean(expt.dparams_list[name])  
+                        
+                  if name[:-5] == 'tfb0':
+                      expt.tfb0 = np.nanmean(expt.dparams_list[name]) 
+                        
+                  if name[:-5] == 'tfb1':
+                      expt.tfb1 = np.nanmean(expt.dparams_list[name])
+                        
+                  if name[:-5] == 'twc0':
+                      expt.twc0 = np.nanmean(expt.dparams_list[name])       
+                        
+                  if name[:-5] == 'twc1':
+                      expt.twc1 = np.nanmean(expt.dparams_list[name])                             
+
+                  if name[:-5] == 'fG':
+                      expt.fG = np.nanmean(expt.dparams_list[name])   
+                        
+                  if name[:-5] == 'fA':
+                      expt.f1 = np.nanmean(expt.dparams_list[name]) 
+                        
+                  if name[:-5] == 'fB':
+                      expt.fB = np.nanmean(expt.dparams_list[name])            
+                        
+                  if name[:-5] == 'gammaA':
+                      expt.gammaA = np.nanmean(expt.dparams_list[name])     
+                        
+                  if name[:-5] == 'gammaB':
+                      expt.gammaB = np.nanmean(expt.dparams_list[name])  
+                        
+                  if name[:-5] == 'epsilon':
+                      expt.epsilon = np.nanmean(expt.dparams_list[name])                          
+   
+                  if name[:-5] == 'fano':
+                      expt.fano = np.nanmean(expt.dparams_list[name])  
+                        
+        # Save the updated values
+
+        # Prepare the header of the csv file
+        with open(expt.working_dir+expt.id+'/Parameters.csv', "w", newline='') as f:
+            writer = csv.writer(f,delimiter=';',dialect='excel')
+            header = np.array([
+                    'is_fluospectrum00',
+                    'is_fluospectrum01',
+                    'is_fluospectrum02',
+                    'is_fluospectrum03',
+                    'is_fluospectrum04',
+                    'ind_first_channel',
+                    'ind_last_channel',
+                    'ind_first_spectrum',
+                    'ind_last_spectrum', 
+                    'gain',
+                    'eV0',
+                    'is_ipysheet',
+                    'delimiter',
+                    'fitstuck_limit',
+                    'is_fast',
+                    'list_isfit_str',
+                    'sl',
+                    'ct',
+                    'noise',
+                    'sfa0',
+                    'sfa1',
+                    'tfb0',
+                    'tfb1',
+                    'twc0',
+                    'twc1',
+                    'fG',
+                    'fA',
+                    'fB',
+                    'gammaA',
+                    'gammaB',
+                    'epsilon',
+                    'fano',
+                    'is_transmitted',
+                    'is_peaks_on_sum',
+                    'nb_curves_intrel'
+                    ])
+            writer.writerow(header)
+
+            writer.writerow([
+                    expt.is_fluospectrum00,
+                    expt.is_fluospectrum01,
+                    expt.is_fluospectrum02,
+                    expt.is_fluospectrum03,
+                    expt.is_fluospectrum04,
+                    expt.ind_first_channel,
+                    expt.ind_last_channel,
+                    expt.ind_first_spectrum,
+                    expt.ind_last_spectrum,
+                    expt.gain,
+                    expt.eV0,
+                    expt.is_ipysheet,
+                    expt.delimiter,
+                    expt.fitstuck_limit,
+                    expt.is_fast,
+                    expt.list_isfit_str,
+                    expt.sl,
+                    expt.ct,
+                    expt.noise,
+                    expt.sfa0,
+                    expt.sfa1,
+                    expt.tfb0,
+                    expt.tfb1,
+                    expt.twc0,
+                    expt.twc1,
+                    expt.fG,
+                    expt.fA,
+                    expt.fB,
+                    expt.gammaA,
+                    expt.gammaB,
+                    expt.epsilon,
+                    expt.fano,
+                    expt.is_transmitted,
+                    expt.is_peaks_on_sum,
+                    expt.nb_curves_intrel
+                    ])
+                    
+
+    button_new_scan = widgets.Button(description="Analyze a new scan",layout=widgets.Layout(width='200px'))
+    button_new_scan.on_click(on_button_new_scan_clicked) 
+ 
+    button_export = widgets.Button(description="Export to pdf", layout=widgets.Layout(width='200px'))
+    button_export.on_click(on_button_export_clicked) 
+
+    button_set_params = widgets.Button(description="Set params",layout=widgets.Layout(width='200px'))
+    button_set_params.on_click(on_button_set_params_clicked)
+     
+    display(button_new_scan)    
+    display(button_export)
+    display(button_set_params)
+
+    if expt.is_extract_done:
+        
+        button_plot_peaks = widgets.Button(description="Plot peaks",layout=widgets.Layout(width='200px'))
+        button_plot_peaks.on_click(on_button_plot_peaks_clicked)   
+   
+        display(button_plot_peaks)
+         
+    if expt.is_fit_ready:
+        
+        button_start_fit = widgets.Button(description="Start fit",layout=widgets.Layout(width='200px'))
+        button_start_fit.on_click(on_button_start_fit_clicked)   
+        
+        display(button_start_fit)
+        
+    if expt.is_fit_done:
+        
+        button_add_plot = widgets.Button(description="Add a plot to report",layout=widgets.Layout(width='200px'))
+        button_add_plot.on_click(on_button_add_plot_clicked) 
+        
+        button_extract_mean = widgets.Button(description="Extract averages",layout=widgets.Layout(width='200px'))
+        button_extract_mean.on_click(on_button_extract_mean_clicked) 
+       
+        display(button_add_plot)
+        display(button_extract_mean)
+    
+    
+def Set_params(expt):    
+    """Fill the parameters and extract the scan."""
+    
+    # Clear the output
+    clear_output(wait=True)
     
     # Quick extraction of scan info
     nexus = PN.PyNexusFile(expt.path)
@@ -294,20 +518,23 @@ def Display_widgets(expt):
     def on_button_extract_clicked(b):
         """Extract the scan."""
 
+        # Give the info that the extraction was done
+        expt.is_extract_done = True
+        
         # Update the parameters with current values
         update_params()
         
         # Clear the plots and reput the boxes
         clear_output(wait=True)
-        Display_widgets(expt)
+        Display_pannel(expt)
         
         # Load the file
         Extract_nexus(expt)
 
         print("Extraction of:\n%s"%expt.path)
         
-        # Define and plot the channels and spectrums subsets
-        Define_subsets(expt)
+        # Set and plot the channels and spectrums subsets
+        Set_subsets(expt)
         Plot_subsets(expt)
 
 
@@ -360,9 +587,7 @@ def Display_widgets(expt):
             list_isfit.remove("")
            
         expt.list_isfit = list_isfit
-        expt.list_isfit_str = ','.join(list_isfit)
-        
-        
+        expt.list_isfit_str = ','.join(list_isfit)  
         
         # Prepare the header of the csv file
         with open(expt.working_dir+expt.id+'/Parameters.csv', "w", newline='') as f:
@@ -786,7 +1011,7 @@ def Display_widgets(expt):
         value=is_peaks_on_sum,
         style=style,
         layout=widgets.Layout(width='200px'),
-        description='Define peaks on sum')       
+        description='Set peaks on sum')       
     
     w_nb_curves_intrel = widgets.IntText(
         value=nb_curves_intrel,
@@ -822,7 +1047,7 @@ def Display_widgets(expt):
     
 
        
-def Define_scan_identifiers(expt):
+def Set_scan_identifiers(expt):
     """
     Create a series of identifiers for the current scan.
     """
@@ -908,7 +1133,7 @@ def Extract_nexus(expt):
     expt.allspectrums_corr = allspectrums_corr
     expt.nexus.close()
 
-def Define_subsets(expt):
+def Set_subsets(expt):
     """
     Select spectrums and channel range for the fits.
     """
@@ -1007,14 +1232,14 @@ def Plot_subsets(expt):
         print(CBOLD + 'ERROR: The first spectrum cannot be empty!!!' + CEND)
 
 
-def Define_peaks(expt):
+def Set_peaks(expt):
     """
     1) Check if the csv file Peaks.csv exists, if not copy DefaultPeaks.csv in the expt folder
     2) If ipysheet is activated, display the interactive sheet. If not, extract the peaks from Peaks.csv
     3) Save the peaks in Peaks.csv
     Update scan.arr_peaks, with the info on the peaks later used to create the Elem and Lines objects.
     """
-
+    
     nb_rows = 20
 
     # Array which will contain the info on peaks
@@ -1032,12 +1257,20 @@ def Define_peaks(expt):
         for row in csvreader:
             arr_peaks = np.append(arr_peaks, row)
     arr_peaks = np.reshape(arr_peaks, (len(arr_peaks)//nb_columns,nb_columns))
+    
+    # String to print the peaks
+    prt_peaks = '\t'.join([str(cell) for cell in expt.peaks_header])+'\n'
+    prt_peaks += '\n'.join(['\t \t'.join([str(cell) for cell in row]) for row in arr_peaks if row[0]!=''])+'\n'
+    prt_peaks += "Peaks saved in:\n%s"%(expt.working_dir+expt.id+'/Peaks.csv')
 
-
+    expt.arr_peaks = arr_peaks
+    expt.prt_peaks = prt_peaks
+    
+    
     if expt.is_ipysheet:
         sheet = ipysheet.easy.sheet(columns=nb_columns, rows=nb_rows ,column_headers = expt.peaks_header)
 
-        # ipysheet does not work correctly with None entries
+        # ipysheet does not work correctly with no entries
         # It is necessary to fill first the cells with something
         nb_rows_to_fill = nb_rows - np.shape(arr_peaks)[0]
         fill = np.reshape(np.array(nb_rows_to_fill*nb_columns*['']),
@@ -1046,31 +1279,63 @@ def Define_peaks(expt):
 
         for i in range(nb_columns):
             ipysheet.easy.column(i,  arr_peaks[:,i])
+            
+        def on_button_update_clicked(b):
+       
+            # Clear the plots and reput the boxes
+            clear_output(wait=True)
+            Display_pannel(expt)
+            
+            # Give the info that the set peaks was done
+            expt.is_set_done = True
+            
+            # Collect the info from the sheet, store them in arr_peaks, write to Peaks.csv
+            arr_peaks = ipysheet.numpy_loader.to_array(ipysheet.easy.current())
+
+            with open(expt.working_dir+expt.id+'/Peaks.csv', "w", newline='') as f:
+                writer = csv.writer(f,delimiter=expt.delimiter)
+                writer.writerow(expt.peaks_header)
+                writer.writerows(arr_peaks)
+
+            # String to print the peaks
+            prt_peaks = '\t'.join([str(cell) for cell in expt.peaks_header])+'\n'
+            prt_peaks += '\n'.join(['\t \t'.join([str(cell) for cell in row]) for row in arr_peaks if row[0]!=''])+'\n'
+            prt_peaks += "Peaks saved in:\n%s"%(expt.working_dir+expt.id+'/Peaks.csv')
+
+            expt.arr_peaks = arr_peaks
+            expt.prt_peaks = prt_peaks
+            
+            print(prt_peaks)
+            print(" ")
+            print(PN._RED+"Click on \'Plot peaks\' to check the peaks on the spectrum."+PN._RESET) 
+            print(" ")
+            print(PN._RED+"Click on \'Start fit\' to start the fit."+PN._RESET) 
+            
+        button_update = widgets.Button(description="Update Peaks")
+        button_update.on_click(on_button_update_clicked)
+                   
         display(sheet)
+        display(button_update) 
 
     else:
         print("Peaks imported from %s"%(expt.working_dir+expt.id+'/Peaks.csv'))
         print('\t'.join([str(cell) for cell in expt.peaks_header]))
         print('\n'.join(['\t \t'.join([str(cell) for cell in row]) for row in arr_peaks if row[0]!='']))
 
-    expt.arr_peaks = arr_peaks
-
 def Extract_elems(expt):
     """
-    1) Validate the current sheet if using ipysheet
-    2) Create objects Elem and Lines from info in scan.arr_peaks
+    Create objects Elem and Lines from info in scan.arr_peaks
     """
-    # 1) Validate the current sheet if using ipysheet
-    if expt.is_ipysheet:
-        Validate_sheet(expt)
 
-    # 2) Create objects Elem and Lines from info in arr_peaks
+    # Create objects Elem and Lines from info in arr_peaks
     # Each "Peak name" gives a new Elem with Elem.name = "Peak name"
     # Each "Line name" gives a new Elem.Line with Elem.Line.name = "Line name"
     # "Position (eV)" -> Elem.Line.position_i
     # "Fit position?" -> Elem.Line.is_fitpos
     # The array scan.elems contains the list of objects Elem
 
+    expt.is_fit_ready = True
+    
     # Remove the peaks which are not fitted from scan.arr_peaks
     expt.arr_peaks = expt.arr_peaks[np.where(expt.arr_peaks[:,4]!='no')]
 
@@ -1102,10 +1367,10 @@ def Validate_sheet(expt):
     """
     Validate the info in the current sheet by transferring them to scan.arr_peaks and save them in Peaks.csv
     """
-
+    
     # Collect the info from the sheet, store them in arr_peaks, write to Peaks.csv
     arr_peaks = ipysheet.numpy_loader.to_array(ipysheet.easy.current())
-
+    
     with open(expt.working_dir+expt.id+'/Peaks.csv', "w", newline='') as f:
         writer = csv.writer(f,delimiter=expt.delimiter)
         writer.writerow(expt.peaks_header)
@@ -1140,7 +1405,7 @@ def Display_peaks(expt, spectrum_index=0):
         # We work on the spectrum specified by spectrum_index
         spectrum = expt.spectrums[spectrum_index]
 
-    # 1) Define initial guesses for the relative amplitudes
+    # 1) Set initial guesses for the relative amplitudes
     # Get each peak approx. intensity (intensity at the given peak position)
     for elem in elems:
         for line in elem.lines:
@@ -1387,11 +1652,10 @@ def Choose_spectrum_to_plot(expt):
 
     def on_button_clicked(b):
         """Validate the values when the button is clicked."""
-        clear_output(wait=True)
         code = 'FF.Load_results(expt, spectrum_index='+str(w.kwargs['spectrum_index'])+')'
         Create_cell(code=code, position='below', celltype='code', is_print=True, is_execute=True)
 
-    button = widgets.Button(description="Add plot to report",layout=widgets.Layout(width='300px', height='40px'))
+    button = widgets.Button(description="Click to add the plot",layout=widgets.Layout(width='300px', height='40px'))
     display(button)
     button.on_click(on_button_clicked)
 
