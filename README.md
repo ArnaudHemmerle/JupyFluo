@@ -21,33 +21,26 @@ AnalysisFunctions.py: 0.3
 
 2. Run the first cell, check that no missing file is reported.
 
-3. Click on the button ```Start new analysis```. It will create all the cells needed for the analysis of one scan.
+3. Enter the information on the scan in the corresponding markdown cells (double-click on the text).
 
-4. Enter the information on the scan in the corresponding markdown cells (double-click on the text).
+4. Use the dropdown list to choose the scan. Click on ```OK```.
 
-5. The code cell ```scan = FF.Define_scan(expt)``` is automatically executed. Use the dropdown list to choose the scan. Click on ```OK```.
-
+5. Click on ```Set params```
 
 6. The panel is used to set the parameters (most of them were already determined by the expert). You should only worry about the subset of spectrums you want to extract, i.e. changing only the parameters ```First Spectrum``` and ```Last Spectrum```.
 
 
-7. Put first, for example, ```First Spectrum=0``` and ```Last Spectrum=1```. Click on ```Extract the scan```.
+7. Put first, for example, ```First Spectrum=0``` and ```Last Spectrum=1```. Click on ```Extract the scan``` at the bottom of the panel.
 
 
-8. Use the top figure to choose your subset of spectrums. Do not choose an empty spectrum for the first spectrum (and try to have at least the first 10 spectrums not empty). Update the parameters ```First Spectrum``` and ```Last Spectrum``` with your choice.
+8. Use the top figure to choose your subset of spectrums. Do not choose an empty spectrum for the first spectrum (and try to have at least the first 10 spectrums not empty). 
 
-9. Click on ```Extract the scan```. 
+9. Click again on ```Set params``` to update the parameters ```First Spectrum``` and ```Last Spectrum``` with your choice. Click again on ```Extract the scan```.
 
 10. A csv file ```Parameters.csv``` with all the parameters is created in the folder ```working_directory/filename/```.
 
 ### Choose the peaks
-1. Run the next cell:  
-
-```
-# Run this cell
-FF.Define_peaks(expt)
-```
-
+1. Click on ```Plot peaks```.  
 
 2. Modify the table to add/remove peaks and fit their position or not. You can also leave a peak in the list and do not include it in the analysis by writting ```no``` in the column ```#Fit Peak?```. 
 
@@ -55,53 +48,35 @@ FF.Define_peaks(expt)
 
 4. Keep the peak/line names ```Elastic/El``` and ```Compton/Co```for the elastic (Rayleigh) and Compton peaks. 
 
-5. **Validate the sheet** by clicking outside of it, and **running the cell** ```FF.Extract_elems(expt)```.
+5. You can use the plot below the sheet to find where the peaks are. The plots are updated in real time, you need to follow the next points to update the plots.
 
-6. You can also directly edit the Excel file ```Peaks.csv``` in your folder ```working_directory/filename/```.
+6. When you think you are done with the peaks, validate the sheet by clicking on ```Update Peaks``` below it.
+
+7. A summary of your peaks appear. Click on plot peaks to check them on the plots, or click directly on ```Start Fit``` to start the fit.
+
+8. Note: You can also directly edit the Excel file ```Peaks.csv``` in your folder ```working_directory/filename/``` if you prefer.
  
-7. Run the cell:
-```
-# Run this cell
-FF.Extract_elems(expt)
-````
-
-
-8. Check the position of each peak, and whether or not you are missing some peaks.
-
-
-9. Adjust you peak choice by modifying the above sheet. Do not forget to **validate the sheet** by clicking outside of it, and **running the cell** ```FF.Extract_elems(expt)```.
-
 
 ### Fit the spectrums
-When you are done with the peak definition, run the cell:
-```
-# Run this cell
-AF.Fit_spectrums(expt)
-```
+
+When you click on ```Start Fit``` , you can follow the fit in real time. The results are continuously updated in your folder ```working_directory/filename/```. Check the files ```FitResult.csv``` and ```FitSpectrums.csv``` that you can open with you prefered software (Excel, Origin, Matlab, vim ...).
 
 
-You can follow the fit in real time. The results are continuously updated in your folder ```working_directory/filename/```. Check the files ```FitResult.csv``` and ```FitSpectrums.csv``` that you can open with you prefered software (Excel, Origin, Matlab, vim ...).
-
-
-When the fit is done, the fitted parameters will be displayed and saved as png in your folder ```working_directory/filename/```.
+Once the fit is done, the fitted parameters will be displayed and saved as png in your folder ```working_directory/filename/```.
+ 
+**The panel will appear at the bottom of the plots** 
 
 ### Add a plot to the PDF report
 
-1. Until now, nothing will be rendered in the final PDF. Run the cell: 
+1. Until now, nothing will be rendered in the final PDF. Click on the button ```Add a plot to report```.
 
-```
-# Run this cell
-FF.Choose_spectrum_to_plot(expt)
-````
+2. Choose a spectrum. Click on ```Preview the selected plot``` to preview it.
 
+3. Choose the spectrum that you want to add to the PDF. Click on ```Add the selected plot```.
 
+4. The output of the cell ```FF.Load_results(expt, spectrum_index=XXX)```, which is automatically generated and executed, will appear in the PDF.
 
-2. Choose the spectrum that you want to add to the PDF. Click on ```Add plot to report```.
-
-
-3. The output of the cell ```FF.Load_results(expt, spectrum_index=XXX)``` automatically generated and executed will appear in the PDF.
-
-4. Finally, go to the bottom of the notebook and click on ```Export to pdf``` to generate the PDF, or ```Start new analysis``` to continue with the next scan. 
+5. Click on ```Export to pdf``` in the panel to generate the PDF, or ```Analyze a new scan``` to continue with the next scan. 
 
 ### Tips
 1. If a peak position or area seems to be noisy, try switching off/on fitting its peak position.
@@ -169,24 +144,19 @@ sfa1 = 1e-5
 
 3. **Through all the procedure, keep fitting ```sl``` and ```ct```.**
 
-4. Add ```noise``` and ```fG``` . Remove all other fitted parameters (except ```sl``` and ```ct```). When the fit is done, get the average results for ```noise``` and ```fG``` using the command (in a new cell):
+4. Add ```noise``` and ```fG``` . Remove all other fitted parameters (except ```sl``` and ```ct```). When the fit is done, get the average results for ```noise``` and ```fG``` using the button ```Extract averages```.
 
-```
-print(np.mean(expt.dparams_list['noise_list']))
-print(np.mean(expt.dparams_list['fG_list']))
-```
+5. You will see that the parameters ```noise``` and ```fG``` in the first cell were updated, giving here for example ```noise = 0.111``` and ```fG = 1.432```.
 
-5. Update the parameters ```noise``` and ```fG``` in the first cell, giving here for example ```noise = 0.111``` and ```fG = 1.432```.
+6. Repeat step 4 for ```tfb0```, giving for example ```tfb0 = 0.080845```.
 
-6. Repeat step 4-5 for ```tfb0```, giving for example ```tfb0 = 0.080845```.
+7. Repeat step 4 for ```twc0```, giving for example ```twc0 = 0.5164```. This parameter can be tricky to fit, you might try to fit it alone without ```sl, ct```.
 
-7. Repeat step 4-5 for ```twc0```, giving for example ```twc0 = 0.5164```. This parameter can be tricky to fit, you might try to fit it alone without ```sl, ct```.
+8. Repeat step 4 for ```twc1```, giving for example ```twc1 = 0.1003```.
 
-8. Repeat step 4-5 for ```twc1```, giving for example ```twc1 = 0.1003```.
+9. Repeat step 4 for ```sfa0``` and ```sfa1``` fitted together, giving for example ```sfa0 = -0.0002114``` and ```sfa1 = 0.0001089```. 
 
-9. Repeat step 4-5 for ```sfa0``` and ```sfa1``` fitted together, giving for example ```sfa0 = -0.0002114``` and ```sfa1 = 0.0001089```. 
-
-10. Repeat step 4-5 for ```noise``` and ```fG``` fitted together, giving for example ```noise = 0.113``` and ```fG = 1.479```.
+10. Repeat step 4 for ```noise``` and ```fG``` fitted together, giving for example ```noise = 0.113``` and ```fG = 1.479```.
 
 ### Finishing
 1. Keep only ```sl``` and ```ct``` as fitting parameters for the User.

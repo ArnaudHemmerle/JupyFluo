@@ -310,11 +310,12 @@ def Display_panel(expt):
     def on_button_add_plot_clicked(b):
         """Create a new cell with the result to be added to the report."""
         
-        Choose_spectrum_to_plot(expt)
-        
         # Clear the plots and reput the boxes
         clear_output(wait=True)
         Display_panel(expt)
+        
+        Choose_spectrum_to_plot(expt)
+       
 
     def on_button_extract_mean_clicked(b):
         """Extract the mean values of the fitted parameters."""   
@@ -1650,18 +1651,35 @@ def Choose_spectrum_to_plot(expt):
     Select a spectrum to plot with its fit.
     """
 
-    def on_button_clicked(b):
-        """Validate the values when the button is clicked."""
-        code = 'FF.Load_results(expt, spectrum_index='+str(w.kwargs['spectrum_index'])+')'
+    def on_button_add_clicked(b):
+        """Add the plot to the report."""
+        code = 'FF.Load_results(expt, spectrum_index='+str(w_index.value)+')'
         Create_cell(code=code, position='below', celltype='code', is_print=True, is_execute=True)
 
-    button = widgets.Button(description="Click to add the plot",layout=widgets.Layout(width='300px', height='40px'))
-    display(button)
-    button.on_click(on_button_clicked)
+    def on_button_display_clicked(b):
+        """Display the selected plot to the report"""
+        
+        # Clear the plots and reput the boxes
+        clear_output(wait=True)
+        Display_panel(expt)
+        
+        display(widgets.HBox([w_index, button_display]))
+        display(button_add)
+        
+        # Plot the spectrum and fit
+        Load_results(expt, w_index.value)
 
-    w = widgets.interactive(Load_results, expt=widgets.fixed(expt),
-                            spectrum_index=widgets.IntText(value=0, step=1, description='Spectrum:'))
-    display(w)
+        
+    w_index = widgets.IntText(description="Spectrum:",layout=widgets.Layout(width='300px'))
+        
+    button_display = widgets.Button(description="Preview the selected plot",layout=widgets.Layout(width='300px'))
+    button_display.on_click(on_button_display_clicked)
+    
+    display(widgets.HBox([w_index, button_display]))        
+        
+    button_add = widgets.Button(description="Add the selected plot",layout=widgets.Layout(width='300px'))
+    button_add.on_click(on_button_add_clicked)
+    display(button_add)
             
 def Load_results(expt, spectrum_index=0):
     """
