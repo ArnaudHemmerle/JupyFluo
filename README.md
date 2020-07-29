@@ -4,7 +4,7 @@ JupyFluo is a Jupyter Notebook to analyze X-Ray Fluorescence (XRF) experiments o
 The notebook should be first set up by an Expert following the instructions in the "Expert" section. User can then follow the guidelines in the "User" section to start using the notebook. Please note that the notebook is currently in development. As such, be skeptical about any unexpected results.  Any feedback on the notebook or the code is welcome.
 
 ## Last versions of modules:
-FrontendFunctions.py: 0.7  
+FrontendFunctions.py: 0.8  
 AnalysisFunctions.py: 0.3
 
 ## User
@@ -21,13 +21,14 @@ AnalysisFunctions.py: 0.3
 
 2. Run the first cell, check that no missing file is reported.
 
-3. Enter the information on the scan in the corresponding markdown cells (double-click on the text).
+3. Use the dropdown list to choose the scan. Click on ```OK```.  
 
-4. Use the dropdown list to choose the scan. Click on ```OK```.
+4. Enter the information on the scan in the corresponding markdown cell (double-click on the text).
+
 
 5. Click on ```Set params```
 
-6. The panel is used to set the parameters (most of them were already determined by the expert). You should only worry about the subset of spectrums you want to extract, i.e. changing only the parameters ```First Spectrum``` and ```Last Spectrum```.
+6. The panel is used to set the parameters (most of them were already determined by the beamline staff). You should only worry about the subset of spectrums you want to extract, i.e. changing only the parameters ```First Spectrum``` and ```Last Spectrum```.
 
 
 7. Put first, for example, ```First Spectrum=0``` and ```Last Spectrum=1```. Click on ```Extract the scan``` at the bottom of the panel.
@@ -40,7 +41,7 @@ AnalysisFunctions.py: 0.3
 10. A csv file ```Parameters.csv``` with all the parameters is created in the folder ```working_directory/filename/```.
 
 ### Choose the peaks
-1. Click on ```Plot peaks```.  
+1. Click on ```Set peaks```.  
 
 2. Modify the table to add/remove peaks and fit their position or not. You can also leave a peak in the list and do not include it in the analysis by writting ```no``` in the column ```#Fit Peak?```. 
 
@@ -48,11 +49,11 @@ AnalysisFunctions.py: 0.3
 
 4. Keep the peak/line names ```Elastic/El``` and ```Compton/Co```for the elastic (Rayleigh) and Compton peaks. 
 
-5. You can use the plot below the sheet to find where the peaks are. The plots are updated in real time, you need to follow the next points to update the plots.
+5. You can use the plot below the sheet to find where the peaks are. The plots are not updated in real time, you need to follow the next points to update the plots.
 
 6. When you think you are done with the peaks, validate the sheet by clicking on ```Update Peaks``` below it.
 
-7. A summary of your peaks appear. Click on plot peaks to check them on the plots, or click directly on ```Start Fit``` to start the fit.
+7. A summary of your peaks appear. Click on ```Set peaks``` again to check them on the plots, or click directly on ```Start Fit``` to start the fit.
 
 8. Note: You can also directly edit the Excel file ```Peaks.csv``` in your folder ```working_directory/filename/``` if you prefer.
  
@@ -64,13 +65,13 @@ When you click on ```Start Fit``` , you can follow the fit in real time. The res
 
 Once the fit is done, the fitted parameters will be displayed and saved as png in your folder ```working_directory/filename/```.
  
-**The panel will appear at the bottom of the plots** 
+**The control panel will appear at the bottom of the plots when the fit is done.** 
 
 ### Add a plot to the PDF report
 
 1. Until now, nothing will be rendered in the final PDF. Click on the button ```Add a plot to report```.
 
-2. Choose a spectrum. Click on ```Preview the selected plot``` to preview it.
+2. Choose a spectrum (if you were not working on the spectrums sum). Click on ```Preview the selected plot``` to preview it.
 
 3. Choose the spectrum that you want to add to the PDF. Click on ```Add the selected plot```.
 
@@ -81,7 +82,7 @@ Once the fit is done, the fitted parameters will be displayed and saved as png i
 ### Tips
 1. If a peak position or area seems to be noisy, try switching off/on fitting its peak position.
 
-2. To save the widget state (everything written in the panels), click in the menu Widgets/Save Notebook Widget State. Careful, the size of the notebook may increase dramatically when saving the widgets. **Carefull, if you do not save the widget state and close the notebook, the panels will not be back when you open it again.**  
+2. To save the widget state (everything written in the panels), click in the menu Widgets/Save Notebook Widget State. Careful, the size of the notebook may increase dramatically when saving the widgets. **Careful, if you do not save the widget state and close the notebook, the panels will not be back when you open it again.**  
 
 ## Expert
 <!-- [![image](https://imgur.com/a7eXXXk.png)](https://www.youtube.com/watch?v=O-ULCnkTFYU)
@@ -92,7 +93,9 @@ Once the fit is done, the fitted parameters will be displayed and saved as png i
 
 Start with a fresh download from the last main version on GitHub. If you rename the notebook, do not forget to change the corresponding parameter inside its first cell. Note that the notebook does not work with JupyterLab in its current version.
 
-The aim of the Expert part is to determine the general and fit parameters. It can be quite painful, but those parameters should not vary during an experiment. It is also possible to copy directly the parameters from a previous experiment (or from the examples provided here), and test if they are good for your current experimental setup.
+The aim of the Expert part is to determine the general and fitting parameters. It can be quite painful, but those parameters should not vary during an experiment. 
+
+It is also possible to copy directly the parameters from a previous experiment by using the option ```Load params``` in the control panel.
 
 ### General parameters
 1. Click on the right fluo elements.
@@ -161,9 +164,9 @@ sfa1 = 1e-5
 ### Finishing
 1. Keep only ```sl``` and ```ct``` as fitting parameters for the User.
 
-2. **Replace the file DefaultPeaks.csv by the file Peaks.csv**
+2. **Make the list of peaks the default one by clicking on ```Save current peaks as default``` in the control panel.**
 
-3. **Replace the file DefaultParameters.csv by the file Parameters.csv**
+3. **Make the list of parameters the default one by clicking on ```Save current params as default``` in the control panel.**
 
 4. Delete the cells you have generated (keep only the first one), and the file is ready for the User.
 

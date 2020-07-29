@@ -27,7 +27,7 @@ except:
     print('Careful: the module ipysheet is not installed!')
 
     
-__version__="0.7"
+__version__="0.8"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
@@ -123,9 +123,9 @@ def Create_cell(code='', position='below', celltype='markdown', is_print=False, 
     # See http://tiny.cc/fnf3nz
     display(Javascript(""" """), display_id=display_id, update=True)
         
-def Generate_cells_on_click(expt):
+def Generate_new_cells(expt):
     """
-    Generate the cells for the next analysis.
+    Generate the title corresponding to the current scan.
     """
     
     position = 'at_bottom'
@@ -137,17 +137,27 @@ def Generate_cells_on_click(expt):
     celltype is a string, 'code' or 'markdown'
     is_execute is a boolean to tell if the cell should executed immediately after creation
     """
-
+    
     cells = [
-    ['# New scan: replace by name', position, 'markdown', True, True],
+    ['# '+expt.id, position, 'markdown', True, True],
     ['Describe the scan here.', position, 'markdown', True, True],
-    ['scan = FF.Set_scan(expt)', position, 'code', False, True]
+    ['FF.Display_panel(expt)', position, 'code', False, True]
     ]
 
     for cell in cells:
         Create_cell(code=cell[0], position=cell[1], celltype=cell[2], is_print=cell[3], is_execute = cell[4])
-   
+
+        
+def Delete_current_cell():
+    """Delete the cell which called this function in the IPython Notebook."""
     
+    display(Javascript(
+        """
+        var index = IPython.notebook.get_selected_cells_indices();
+        IPython.notebook.delete_cell(index);
+        """
+    ))        
+        
 def Export_nb_to_pdf(nb_name):
     """
     Save the current state of the notebook.
@@ -192,12 +202,6 @@ class Scan:
         pass
 
 
-def Select_scan(expt):
-    """
-    Create a widget to select the next scan.
-    """
-    
-
 def Set_scan(expt):
     """
     1) Create widgets to allow for user to enter required params.
@@ -230,9 +234,11 @@ def Set_scan(expt):
         expt.is_fit_ready = False
         expt.is_fit_done = False
             
-        # Display the controm panel
-        Display_panel(expt)
+        # Generate the markdown cells
+        Generate_new_cells(expt)
         
+        Delete_current_cell()
+       
     w_select_scan = widgets.Dropdown(
         options=expt.list_nxs_files,
         description='Select scan:',
@@ -250,10 +256,9 @@ def Display_panel(expt):
     def on_button_new_scan_clicked(b):
         """Start the analysis of a new scan.""" 
         
-        clear_output(wait=True)
+        Delete_current_cell()
         
-        Generate_cells_on_click(expt)
-
+        Create_cell(code='scan = FF.Set_scan(expt)', position='at_bottom', celltype='code', is_print=False, is_execute = True)
 
 
     def on_button_export_clicked(b):
