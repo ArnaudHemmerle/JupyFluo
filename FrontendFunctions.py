@@ -192,6 +192,11 @@ class Scan:
         pass
 
 
+def Select_scan(expt):
+    """
+    Create a widget to select the next scan.
+    """
+    
 
 def Set_scan(expt):
     """
@@ -288,11 +293,65 @@ def Display_panel(expt):
         # Extract the info from the sheet
         Extract_elems(expt)
 
-        # Selection of the spectrum to plot the peaks
-        w = widgets.interact(Display_peaks,
-                             expt=widgets.fixed(expt),
-                             spectrum_index=widgets.IntText(value=0, step=1, description='Spectrum:'))
+        # Display the peaks on the selected spectrum or on the sum
+        if expt.is_peaks_on_sum:
+            Display_peaks(expt)
+        else:
+            w = widgets.interact(Display_peaks,
+                                 expt=widgets.fixed(expt),
+                                 spectrum_index=widgets.IntText(value=0, step=1, description='Spectrum:'))
 
+        
+    def on_button_save_params_clicked(b):
+        """Save the current params as default ones."""
+
+        # Clear the plots and reput the boxes
+        clear_output(wait=True)
+        Display_panel(expt)
+        
+        # Copy the current params as the defaut file
+        shutil.copy(expt.working_dir+expt.id+'/Parameters.csv','DefaultParameters.csv')
+        
+        print("Current set of parameters saved as default.")
+        
+    def on_button_load_params_clicked(b):
+        """Load a set of params as the current one."""
+
+        # Clear the plots and reput the boxes
+        clear_output(wait=True)
+        Display_panel(expt)
+        
+        list_params_files = [file for file in sorted(os.listdir('parameters/'))][::-1]
+
+        w_select_files = widgets.Dropdown(options=list_params_files)
+
+        def on_button_import_clicked(b):
+            "Make the copy."
+
+            # Copy the selected params as the current params file
+            shutil.copy('parameters/'+w_select_files.value, expt.working_dir+expt.id+'/Parameters.csv')  
+
+            print(str(w_select_files.value)+" imported as current set of parameters.")
+
+        button_import = widgets.Button(description="OK",layout=widgets.Layout(width='100px'))
+        button_import.on_click(on_button_import_clicked)
+
+        display(widgets.HBox([w_select_files, button_import]))
+
+
+    def on_button_save_peaks_clicked(b):
+        """Save the current peaks as default ones."""
+
+        # Clear the plots and reput the boxes
+        clear_output(wait=True)
+        Display_panel(expt)
+        
+        # Copy the current params as the defaut file
+        shutil.copy(expt.working_dir+expt.id+'/Peaks.csv','DefaultPeaks.csv')
+        
+        print("Current set of peaks saved as default.")
+        
+        
     def on_button_start_fit_clicked(b):
         """Start the fit."""
         
@@ -463,36 +522,54 @@ def Display_panel(expt):
 
     button_set_params = widgets.Button(description="Set params",layout=widgets.Layout(width='200px'))
     button_set_params.on_click(on_button_set_params_clicked)
+    
+    button_save_params = widgets.Button(description="Save current params as default",layout=widgets.Layout(width='250px'))
+    button_save_params.on_click(on_button_save_params_clicked)
+    
+    button_load_params = widgets.Button(description="Load params",layout=widgets.Layout(width='200px'))
+    button_load_params.on_click(on_button_load_params_clicked)
      
-    display(button_new_scan)    
-    display(button_export)
-    display(button_set_params)
-
+    display(widgets.HBox([button_new_scan,button_export]))
+    print(100*"-")
+    print("Set parameters:")
+    display(widgets.HBox([button_set_params, button_load_params, button_save_params]))
+    print(100*"-")
+    
     if expt.is_extract_done:
         
-        button_plot_peaks = widgets.Button(description="Plot peaks",layout=widgets.Layout(width='200px'))
+        button_plot_peaks = widgets.Button(description="Set peaks",layout=widgets.Layout(width='200px'))
         button_plot_peaks.on_click(on_button_plot_peaks_clicked)   
-   
-        display(button_plot_peaks)
-         
+
+        button_save_peaks = widgets.Button(description="Save current peaks as default",layout=widgets.Layout(width='250px'))
+        button_save_peaks.on_click(on_button_save_peaks_clicked)
+        
+        print("Set peaks:")
+        
+        if expt.is_fit_ready:
+            display(widgets.HBox([button_plot_peaks,button_save_peaks])) 
+        else:
+            display(button_plot_peaks)
+        print(100*"-")        
+          
     if expt.is_fit_ready:
         
         button_start_fit = widgets.Button(description="Start fit",layout=widgets.Layout(width='200px'))
         button_start_fit.on_click(on_button_start_fit_clicked)   
-        
-        display(button_start_fit)
-        
-    if expt.is_fit_done:
         
         button_add_plot = widgets.Button(description="Add a plot to report",layout=widgets.Layout(width='200px'))
         button_add_plot.on_click(on_button_add_plot_clicked) 
         
         button_extract_mean = widgets.Button(description="Extract averages",layout=widgets.Layout(width='200px'))
         button_extract_mean.on_click(on_button_extract_mean_clicked) 
-       
-        display(button_add_plot)
-        display(button_extract_mean)
-    
+        
+        print("Fit:")
+        
+        if expt.is_fit_done:
+            display(widgets.HBox([button_start_fit, button_add_plot, button_extract_mean]))
+        else:
+            display(button_start_fit)
+        
+        print(100*"-")      
     
 def Set_params(expt):    
     """Fill the parameters and extract the scan."""
@@ -529,14 +606,18 @@ def Set_params(expt):
         clear_output(wait=True)
         Display_panel(expt)
         
+        print("Extraction of:\n%s"%expt.path)
+
+        print(PN._RED+"Wait for the extraction to finish..."+PN._RESET)
+        
         # Load the file
         Extract_nexus(expt)
-
-        print("Extraction of:\n%s"%expt.path)
         
         # Set and plot the channels and spectrums subsets
         Set_subsets(expt)
         Plot_subsets(expt)
+        
+        print(PN._RED+"Extraction finished."+PN._RESET)
 
 
     def update_params():
@@ -1308,7 +1389,7 @@ def Set_peaks(expt):
             
             print(prt_peaks)
             print(" ")
-            print(PN._RED+"Click on \'Plot peaks\' to check the peaks on the spectrum."+PN._RESET) 
+            print(PN._RED+"Click on \'Set peaks\' to check the peaks on the spectrum."+PN._RESET) 
             print(" ")
             print(PN._RED+"Click on \'Start fit\' to start the fit."+PN._RESET) 
             
@@ -1653,6 +1734,11 @@ def Choose_spectrum_to_plot(expt):
 
     def on_button_add_clicked(b):
         """Add the plot to the report."""
+        
+        # Clear the plots and reput the boxes
+        clear_output(wait=True)
+        Display_panel(expt)
+        
         code = 'FF.Load_results(expt, spectrum_index='+str(w_index.value)+')'
         Create_cell(code=code, position='below', celltype='code', is_print=True, is_execute=True)
 
