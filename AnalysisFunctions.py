@@ -21,7 +21,7 @@ from IPython.display import clear_output
 
 
 
-__version__="0.3"
+__version__="0.4"
 
 """
 Here are defined the functions for analysis.
@@ -45,7 +45,7 @@ def Fit_spectrums(expt, is_save=True):
     #####################################################
 
     eV = expt.eV
-    elems = expt.elems
+    groups = expt.groups
     dparams_fit = {  'sl':expt.sl,
                      'ct':expt.ct,
                      'sfa0':expt.sfa0,
@@ -74,12 +74,10 @@ def Fit_spectrums(expt, is_save=True):
     # Init all the lists
     dparams_list = dict.fromkeys(dparams_list, np.array([]))
 
-    for elem in elems:
-        elem.area_list = np.array([])
-        for line in elem.lines:
-            line.intRel_tmp = np.array([])
-            line.intRel_list = np.array([])
-            line.position_list = np.array([])
+    for group in groups:
+        group.area_list = np.array([])
+        for peak in group.peaks:
+            peak.position_list = np.array([])
 
     #####################################################
     ##############   PREPARE SAVE   #####################
@@ -102,11 +100,11 @@ def Fit_spectrums(expt, is_save=True):
                     header =np.append(header, '#'+stamps0D[i][1])
         
         # Stamps from the fit            
-        for elem in elems:
-            header = np.append(header, '#'+elem.name+'.area')
-            for line in elem.lines:
-                header = np.append(header,'#'+elem.name+'.'+line.name+'.intRel')
-                header = np.append(header,'#'+elem.name+'.'+line.name+'.position')
+        for group in groups:
+            header = np.append(header, '#'+group.name+'.area')
+                
+            for peak in group.peaks:
+                header = np.append(header,'#'+group.elem_name+'.'+peak.name+'.position')
 
         for name in dparams_list:
             header = np.append(header, '#'+name[:-5])                    
@@ -147,56 +145,46 @@ def Fit_spectrums(expt, is_save=True):
 
         # Least squares fit
         # Find the least squares solution to the equation ax=b, used as initial guess for the LM fit.
-        # p contains the best fit for the area of each elem (elem.area)
+        # p contains the best fit for the area of each group (group.area)
         # Results with the subscript ls
         a = []
-        for elem in elems:
-            spectrum_elem = 0.
-            for line in elem.lines:
-                    position = line.position_i
-                    intRel = line.intRel_i
-                    if elem.name == 'Compton':
-                        spectrum_elem += Fcn_compton_peak(position,intRel,eV,dparams_0)
+        for group in groups:
+            spectrum_group = 0.
+            for peak in group.peaks:
+                    position = peak.position_init
+                    intensity_rel = peak.intensity_rel
+                    if group.elem_name == 'Compton':
+                        spectrum_group += Fcn_compton_peak(position,intensity_rel,eV,dparams_0)
                     else:
-                        spectrum_elem += Fcn_peak(position,intRel,eV,dparams_0)
-            a.append(spectrum_elem)
+                        spectrum_group += Fcn_peak(position,intensity_rel,eV,dparams_0)
+            a.append(spectrum_group)
         a = np.transpose(a)
         b = spectrum
 
         area_ls, residues, rank, sv = linalg.lstsq(a,b,1.e-10)
 
-        # Store the elem.area of each elem
+        # Store the group.area of each group
         i=0
-        for elem in elems:
-            elem.area_ls = area_ls[i]
+        for group in groups:
+            group.area_ls = area_ls[i]
             i+=1
 
         ###################################
         # LMFIT
         dparams_lm = Parameters()
 
-        for elem in elems:
-            dparams_lm.add('area_'+elem.name, value=elem.area_ls, vary=True, min = 0.)
-            for line in elem.lines:
-                # Decides whether the relative intensity of the line should be fitted
-                if isclose(line.intRel_i,1.):
-                    # Keeps the most intense peak at a relative intensity of 1 (by definition)
-                    dparams_lm.add('intRel_'+elem.name+'_'+line.name, value=1., vary=False)
-                else:
-                    # The first curves are used to set the relative intensities
-                    if count < expt.nb_curves_intrel:
-                        dparams_lm.add('intRel_'+elem.name+'_'+line.name, value=line.intRel_i,
-                                       vary=elem.isfit_intRel, min = 0., max = 1.)
-                    else:
-                        dparams_lm.add('intRel_'+elem.name+'_'+line.name, value=line.intRel,
+        for group in groups:
+            dparams_lm.add('area_'+group.name, value=group.area_ls, vary=True, min = 0.)
+            for peak in group.peaks:
+                dparams_lm.add('intensity_rel_'+group.name+'_'+peak.name, value=peak.intensity_rel,
                                        vary=False)
 
-                # Check whether the position of the line should be fitted
-                if line.is_fitpos:
-                    dparams_lm.add('pos_'+elem.name+'_'+line.name, value=line.position_i,
-                                   vary = True, min = line.position_i-100, max = line.position_i+100)
+                # Check whether the position of the peak should be fitted
+                if peak.is_fitpos:
+                    dparams_lm.add('pos_'+group.name+'_'+peak.name, value=peak.position_init,
+                                   vary = True, min = peak.position_init-100, max = peak.position_init+100)
                 else:
-                    dparams_lm.add('pos_'+elem.name+'_'+line.name, value=line.position_i,
+                    dparams_lm.add('pos_'+group.name+'_'+peak.name, value=peak.position_init,
                                    vary = False)
 
 
@@ -236,7 +224,7 @@ def Fit_spectrums(expt, is_save=True):
             return expt.is_fitstuck
 
         # Do the fit, here with leastsq model
-        minner = Minimizer(Fcn2min, dparams_lm, fcn_args=(elems, eV, spectrum), iter_cb=iter_cb, xtol = 1e-6, ftol = 1e-6)
+        minner = Minimizer(Fcn2min, dparams_lm, fcn_args=(groups, eV, spectrum), iter_cb=iter_cb, xtol = 1e-6, ftol = 1e-6)
 
         result = minner.minimize(method = 'leastsq')
 
@@ -248,28 +236,21 @@ def Fit_spectrums(expt, is_save=True):
         if expt.is_fitstuck:
 
             # If the fit was stuck we put NaN
-            for elem in elems:
-                elem.area_list = np.append(elem.area_list, np.nan)
+            for group in groups:
+                group.area_list = np.append(group.area_list, np.nan)
 
-                for line in elem.lines:
-                    line.intRel_list = np.append(line.intRel_list , np.nan)
-                    line.position_list = np.append(line.position_list, np.nan)
+                for peak in group.peaks:
+                    peak.position_list = np.append(peak.position_list, np.nan)
 
             for name in dparams_list:
                 dparams_list[name] =  np.append(dparams_list[name], np.nan)
 
         else:
-            for elem in elems:
-                elem.area_list = np.append(elem.area_list, result.params['area_'+elem.name].value)
+            for group in groups:
+                group.area_list = np.append(group.area_list, result.params['area_'+group.name].value)
 
-                for line in elem.lines:
-                    if count<expt.nb_curves_intrel:
-                        # The first fits are used to set the relative intensities
-                        line.intRel_tmp = np.append(line.intRel_tmp, result.params['intRel_'+elem.name+'_'+line.name].value)
-                        line.intRel = np.mean(line.intRel_tmp)
-
-                    line.intRel_list = np.append(line.intRel_list , result.params['intRel_'+elem.name+'_'+line.name].value)
-                    line.position_list = np.append(line.position_list, result.params['pos_'+elem.name+'_'+line.name].value)
+                for peak in group.peaks:
+                    peak.position_list = np.append(peak.position_list, result.params['pos_'+group.name+'_'+peak.name].value)
 
             for name in dparams_list:
                 dparams_list[name] =  np.append(dparams_list[name], result.params[name[:-5]].value)
@@ -287,34 +268,46 @@ def Fit_spectrums(expt, is_save=True):
         dparams = {}
         for name in dparams_list:
             dparams[name[:-5]] = dparams_list[name][-1]
-        spectrum_fit = Fcn_spectrum(dparams, elems, eV)
+        spectrum_fit = Fcn_spectrum(dparams, groups, eV)
 
         clear_output(wait=True) # This line sets the refreshing
         fig = plt.figure(figsize=(15,10))
         fig.suptitle('Fit of spectrum %g/%g'%(count,(len(expt.spectrums)-1)), fontsize=14)
         fig.subplots_adjust(top=0.95)
-        ax1 = fig.add_subplot(211)
-        colors = iter(['r', 'b', 'y', 'c', 'm', 'g', 'orange', 'brown']*20)
+        ax1 = fig.add_subplot(211)        
         ax1.set(xlabel = 'E (eV)', ylabel = 'counts')
-        for elem in elems:
-            for line in elem.lines:
-                position = line.position_list[-1]
-                ax1.axvline(x = position,  color = next(colors) , label = elem.name+' '+line.name)
+        
+        
+        """
+        # Uncomment to have all peaks displayed
+        colors = iter(['#006BA4', '#FF800E', '#ABABAB', '#595959', 'k', '#C85200', 'b', '#A2C8EC', '#FFBC79']*20)
+        linestyles = iter(['--', '-.', '-', ':']*40)  
+        for group in groups: 
+            for peak in group.peaks:
+                position = peak.position_list[-1]
+                ax1.axvline(x = position,  color = next(colors) , label = group.name+' '+peak.name)
+        """
+        
         ax1.plot(eV, spectrum, 'k.')
-        ax1.plot(eV, spectrum_fit, 'r-')
+        ax1.plot(eV, spectrum_fit, 'r-', label = 'Fit')
+        #ax1.plot(eV, dparams['sl']*eV+dparams['ct'], 'b-', label = 'Linear background')
         ax1.legend()
         plt.setp(ax1.get_xticklabels(), visible=False)
 
-        ax2 = fig.add_subplot(212)
-        colors = iter(['r', 'b', 'y', 'c', 'm', 'g', 'orange', 'brown']*20)
-        ax2.set(xlabel = 'E (eV)', ylabel = 'counts')
-        for elem in elems:
-            for line in elem.lines:
-                position = line.position_list[-1]
-                ax2.axvline(x = position,  color = next(colors))
+        ax2 = fig.add_subplot(212)        
+        """
+        # Uncomment to have all peaks displayed
+        colors = iter(['#006BA4', '#FF800E', '#ABABAB', '#595959', 'k', '#C85200', 'b', '#A2C8EC', '#FFBC79']*20)
+        linestyles = iter(['--', '-.', '-', ':']*40) 
+        for group in groups: 
+            for peak in group.peaks:
+                position = peak.position_list[-1]
+                ax1.axvline(x = position,  color = next(colors) , label = group.name+' '+peak.name)
+        """
+        
         ax2.plot(eV, spectrum, 'k.')
         ax2.plot(eV, spectrum_fit, 'r-')
-        #ax2.plot(eV, dparams['sl']*eV+dparams['ct'], 'b-', label = 'Linear background')
+        #ax2.plot(eV, dparams['sl']*eV+dparams['ct'], 'b-')
         #ax2.legend(loc = 1)
         ax2.set_ylim(1,1e6)
         ax2.set_yscale('log')
@@ -341,11 +334,10 @@ def Fit_spectrums(expt, is_save=True):
                  tbw = np.append(tbw, data0D[i][expt.ind_first_spectrum+count])
 
             # Put the results from the fit
-            for elem in elems:
-                tbw = np.append(tbw,elem.area_list[-1])
-                for line in elem.lines:
-                    tbw = np.append(tbw,line.intRel_list[-1])
-                    tbw = np.append(tbw,line.position_list[-1])
+            for group in groups:
+                tbw = np.append(tbw,group.area_list[-1])
+                for peak in group.peaks:
+                    tbw = np.append(tbw,peak.position_list[-1])
             for name in dparams_list:
                 tbw = np.append(tbw,dparams_list[name][-1])    
 
@@ -383,26 +375,25 @@ def Fit_spectrums(expt, is_save=True):
     print('Results are saved in:\n%s'%(expt.working_dir+expt.id+'/FitResults.csv'))
 
         
-def Fcn2min(dparams, elems, eV, data):
+def Fcn2min(dparams, groups, eV, data):
     """
     Define objective function: returns the array to be minimized in the lmfit.
     """
-    for elem in elems:
-        elem.area = dparams['area_'+elem.name]
+    for group in groups:
+        group.area = dparams['area_'+group.name]
 
-        for line in elem.lines:
-            line.intRel = float(dparams['intRel_'+elem.name+'_'+line.name])
-            line.position = float(dparams['pos_'+elem.name+'_'+line.name])
+        for peak in group.peaks:
+            peak.position = float(dparams['pos_'+group.name+'_'+peak.name])
 
-    model = Fcn_spectrum(dparams, elems, eV)
+    model = Fcn_spectrum(dparams, groups, eV)
 
     return model - data
 
 
-def Fcn_spectrum(dparams, elems, eV):
+def Fcn_spectrum(dparams, groups, eV):
     """
     Definition of the spectrum as the sum of the peaks + the background.
-    Takes a dictionnary with the params values, the list of Elem, the array of eV.
+    Takes a dictionnary with the params values, the list of Group, the array of eV.
     """
 
     ct = dparams['ct']
@@ -410,25 +401,25 @@ def Fcn_spectrum(dparams, elems, eV):
     noise = dparams['noise']
 
     spectrum_tot = 0.
-    for elem in elems:
-        spectrum_elem = 0.
-        area = elem.area
-        for line in elem.lines:
-            position = line.position
-            intRel = line.intRel
-            if elem.name == 'Compton':
-                spectrum_elem += area*Fcn_compton_peak(position,intRel,eV,dparams)
+    for group in groups:
+        spectrum_group = 0.
+        area = group.area
+        for peak in group.peaks:
+            position = peak.position
+            intensity_rel = peak.intensity_rel
+            if group.elem_name == 'Compton':
+                spectrum_group += area*Fcn_compton_peak(position,intensity_rel,eV,dparams)
             else:
-                spectrum_elem += area*Fcn_peak(position,intRel,eV,dparams)
-        spectrum_tot += spectrum_elem
+                spectrum_group += area*Fcn_peak(position,intensity_rel,eV,dparams)
+        spectrum_tot += spectrum_group
 
     # We add a linear baseline, which cannot be < 0, and stops after the elastic peak (if there is one)
     limit_baseline = eV[-1]
-    for elem in elems:
-        if elem.name == 'Elastic':
-            for line in elem.lines:
-                if line.name == 'El':
-                    limit_baseline = line.position
+    for group in groups:
+        if group.elem_name == 'Elastic':
+            for peak in group.peaks:
+                if peak.name == 'El':
+                    limit_baseline = peak.position
 
     eV_tmp = np.where(eV<limit_baseline+noise, eV, 0.)
     baseline = ct+sl*eV_tmp

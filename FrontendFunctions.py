@@ -27,7 +27,7 @@ except:
     print('Careful: the module ipysheet is not installed!')
 
     
-__version__="0.8"
+__version__="0.9"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
@@ -296,7 +296,7 @@ def Display_panel(expt):
         Set_peaks(expt)
 
         # Extract the info from the sheet
-        Extract_elems(expt)
+        Extract_groups(expt)
 
         # Display the peaks on the selected spectrum or on the sum
         if expt.is_peaks_on_sum:
@@ -475,8 +475,7 @@ def Display_panel(expt):
                     'epsilon',
                     'fano',
                     'is_transmitted',
-                    'is_peaks_on_sum',
-                    'nb_curves_intrel'
+                    'is_peaks_on_sum'
                     ])
             writer.writerow(header)
 
@@ -514,8 +513,7 @@ def Display_panel(expt):
                     expt.epsilon,
                     expt.fano,
                     expt.is_transmitted,
-                    expt.is_peaks_on_sum,
-                    expt.nb_curves_intrel
+                    expt.is_peaks_on_sum
                     ])
                     
 
@@ -661,7 +659,7 @@ def Set_params(expt):
         expt.fano = w_fano.value
         expt.is_transmitted = w_is_transmitted.value
         expt.is_peaks_on_sum = w_is_peaks_on_sum.value
-        expt.nb_curves_intrel = w_nb_curves_intrel.value
+        expt.is_show_peaks = w_is_show_peaks.value
         
         # Particular case of list_isfit, going from str to array
         list_isfit = ['sl'*w_is_sl.value, 'ct'*w_is_ct.value, 'noise'*w_is_noise.value,
@@ -714,7 +712,7 @@ def Set_params(expt):
                     'fano',
                     'is_transmitted',
                     'is_peaks_on_sum',
-                    'nb_curves_intrel'
+                    'is_show_peaks'
                     ])
             writer.writerow(header)
             
@@ -753,7 +751,7 @@ def Set_params(expt):
                     expt.fano,
                     expt.is_transmitted,
                     expt.is_peaks_on_sum,
-                    expt.nb_curves_intrel
+                    expt.is_show_peaks
                     ])
 
 
@@ -795,7 +793,7 @@ def Set_params(expt):
             fano = float(row['fano'].replace(',', '.'))
             is_transmitted = eval(row['is_transmitted'])
             is_peaks_on_sum = eval(row['is_peaks_on_sum'])
-            nb_curves_intrel = int(row['nb_curves_intrel'])
+            is_show_peaks = eval(row['is_show_peaks'])
        
     # convert list_isfit_str into a list
     list_isfit = [str(list_isfit_str.split(',')[i]) for i in range(len(list_isfit_str.split(',')))]
@@ -1091,21 +1089,22 @@ def Set_params(expt):
     w_is_transmitted = widgets.Checkbox(
         value=is_transmitted,
         style=style,
-        layout=widgets.Layout(width='200px'),
+        layout=widgets.Layout(width='150px'),
         description='Transmit fit params')   
     
     w_is_peaks_on_sum = widgets.Checkbox(
         value=is_peaks_on_sum,
         style=style,
-        layout=widgets.Layout(width='200px'),
+        layout=widgets.Layout(width='150px'),
         description='Set peaks on sum')       
     
-    w_nb_curves_intrel = widgets.IntText(
-        value=nb_curves_intrel,
-        step=1,
-        description='Nb curves intRel',
-        layout=widgets.Layout(width='200px'),
-        style=style)    
+    w_is_show_peaks = widgets.Checkbox(
+        value=is_show_peaks,
+        layout=widgets.Layout(width='150px'),
+        style=style,
+        description='Show peaks?')       
+    
+
     
     button_extract = widgets.Button(description="Extract the scan",layout=widgets.Layout(width='500px'))
     button_extract.on_click(on_button_extract_clicked)
@@ -1127,8 +1126,8 @@ def Set_params(expt):
     display(widgets.HBox([w_fA, w_fB, w_gammaA,w_gammaB]))  
 
     print("-"*100)
-    display(widgets.HBox([w_gain, w_eV0, w_delimiter, w_fitstuck_limit, w_nb_curves_intrel]))
-    display(widgets.HBox([w_is_ipysheet, w_is_fast, w_is_transmitted, w_is_peaks_on_sum]))
+    display(widgets.HBox([w_gain, w_eV0, w_delimiter, w_fitstuck_limit]))
+    display(widgets.HBox([w_is_ipysheet, w_is_fast, w_is_transmitted, w_is_peaks_on_sum, w_is_show_peaks]))
 
     display(widgets.HBox([button_extract]))
     
@@ -1324,10 +1323,10 @@ def Set_peaks(expt):
     1) Check if the csv file Peaks.csv exists, if not copy DefaultPeaks.csv in the expt folder
     2) If ipysheet is activated, display the interactive sheet. If not, extract the peaks from Peaks.csv
     3) Save the peaks in Peaks.csv
-    Update scan.arr_peaks, with the info on the peaks later used to create the Elem and Lines objects.
+    Update scan.arr_peaks, with the info on the peaks later used to create the Group and Peak objects.
     """
     
-    nb_rows = 20
+    nb_rows = 40
 
     # Array which will contain the info on peaks
     arr_peaks = np.array([])
@@ -1409,46 +1408,112 @@ def Set_peaks(expt):
         print('\t'.join([str(cell) for cell in expt.peaks_header]))
         print('\n'.join(['\t \t'.join([str(cell) for cell in row]) for row in arr_peaks if row[0]!='']))
 
-def Extract_elems(expt):
+def Extract_groups(expt):
     """
-    Create objects Elem and Lines from info in scan.arr_peaks
+    Create objects Group and Peak from info in scan.arr_peaks
     """
 
-    # Create objects Elem and Lines from info in arr_peaks
-    # Each "Peak name" gives a new Elem with Elem.name = "Peak name"
-    # Each "Line name" gives a new Elem.Line with Elem.Line.name = "Line name"
-    # "Position (eV)" -> Elem.Line.position_i
-    # "Fit position?" -> Elem.Line.is_fitpos
-    # The array scan.elems contains the list of objects Elem
+    # Create objects Group and Peak from info in arr_peaks
+    # Peaks are grouped by lines belonging to the same fluo element and with the same initial level
+    # Each "ElemName+InitialLevelName" gives a new Group with Group.name = "ElemName_InitialLevelName"
+    # Each "LineName" gives a new Group.Peak with Group.Peak.name = "LineName"
+    # "Position (eV)" -> Group.Peak.position_init
+    # "Strength" -> Group.Peak.strength
+    # "Fit position?" -> Group.Peak.is_fitpos
+    # The array scan.Groups contains the list of objects Group
 
+    # Indicator for the panel
     expt.is_fit_ready = True
     
     # Remove the peaks which are not fitted from scan.arr_peaks
-    expt.arr_peaks = expt.arr_peaks[np.where(expt.arr_peaks[:,4]!='no')]
+    expt.arr_peaks = expt.arr_peaks[np.where(expt.arr_peaks[:,5]!='no')]
 
-    elems = []
+    # List of groups of peaks (same elem, same initial level)
+    Groups = []
+    
+    ###################################################################
+    # Construct the groups and lines
     for i in range(np.shape(expt.arr_peaks)[0]):
+        
         elem_name = expt.arr_peaks[i][0]
-        if (elem_name != '' and elem_name != expt.arr_peaks[i-1][0]):
-            newElem = Elem(elem_name)
-            elems = np.append(elems, newElem)
-            elems[-1].lines = []
+        
+        if elem_name != '':
+           
+            line_name = expt.arr_peaks[i][1]
+            
+            # Determine the initial level from the line name
+            if (line_name[0] == 'K'):
+                initial_level_name = 'K'
+            elif line_name in ['La1','La2','Lb2','Lb5','Lb6','Ll']:
+                initial_level_name = 'L3'
+            elif line_name in ['Lb1','Lg1','Lg6','Ln']:
+                initial_level_name = 'L2'
+            elif line_name in ['Lb3','Lb4','Lg2','Lg3']:
+                initial_level_name = 'L1'
+            elif line_name=='Ma':
+                initial_level_name = 'M5'
+            elif line_name=='Mb':
+                initial_level_name = 'M4'
+            elif line_name=='Mg':
+                initial_level_name = 'M3'
+            elif line_name=='Mz':
+                initial_level_name = 'M45'       
+            else:
+                initial_level_name = line_name
+                                
+            # Define the name of a group of peaks 
+            group_name = elem_name+'_'+initial_level_name
+            
 
-    for i in range(np.shape(expt.arr_peaks)[0]):
-        elem_name = expt.arr_peaks[i][0]
-        for elem in elems:
-            if elem.name == elem_name:
-                if expt.arr_peaks[i][3] == 'yes':
-                    is_fitpos = True
-                else:
-                    is_fitpos = False
-                elem.newLine = Line(name = str(expt.arr_peaks[i][1]),
-                                    position_i = float(expt.arr_peaks[i][2]),
-                                    is_fitpos = is_fitpos)
-                elem.lines = np.append(elem.lines, elem.newLine)
+            # Check if the group has already been created
+            is_new_group = True
+            for group in Groups:
+                if group_name == group.name:
+                    is_new_group = False
+            
+            # Create a new group
+            if is_new_group:
+                newGroup = Group(group_name)
+                Groups = np.append(Groups, newGroup)
+                Groups[-1].elem_name = elem_name
+                Groups[-1].peaks = []
+             
+            # Convert yes/no in True/False
+            if expt.arr_peaks[i][4] == 'yes':
+                is_fitpos = True
+            else:
+                is_fitpos = False
+                
+            # Add the peak to the right group
+            for group in Groups:
+                if group_name == group.name:
+                    newPeak = Peak(
+                    name = str(expt.arr_peaks[i][1]),
+                    position_init = float(expt.arr_peaks[i][2]),
+                    strength = float(expt.arr_peaks[i][3]),
+                    is_fitpos = is_fitpos)
+                    
+                    group.peaks = np.append(group.peaks, newPeak)
 
-    expt.elems = elems
+    expt.groups = Groups
 
+    ###################################################################
+    # Compute the relative intensity (relative to the most intense peak,
+    # i.e. intensity_rel = 1 for the most intense line of a given initial level)
+    
+    for group in expt.groups:
+        max_strength = 0.
+        
+        # Extract the most intense strength of the group
+        for peak in group.peaks:
+            if peak.strength>max_strength:
+                max_strength = peak.strength
+            
+        # Normalize the strengths wit the most intense one
+        for peak in group.peaks:
+            peak.intensity_rel = peak.strength/max_strength
+    
+      
 
 def Validate_sheet(expt):
     """
@@ -1474,16 +1539,12 @@ def Validate_sheet(expt):
 
 def Display_peaks(expt, spectrum_index=0):
     """
-    1) Define initial guesses for the relative amplitudes of each lines from each elem, used later in the fit.
-    2) Plot the position of each peaks on the given spectrum spectrum_index.
+    Plot the position of each peaks on the given spectrum spectrum_index (or the sum).
     Take spectrum_index, the index of which spectrum you want to use.
     """
 
     # Convert channels into eV
     expt.eV = expt.channels*expt.gain + expt.eV0
-
-    eV = expt.eV
-    elems = expt.elems
 
     if expt.is_peaks_on_sum:
         # We work on the sum to define the peaks
@@ -1492,31 +1553,7 @@ def Display_peaks(expt, spectrum_index=0):
         # We work on the spectrum specified by spectrum_index
         spectrum = expt.spectrums[spectrum_index]
 
-    # 1) Set initial guesses for the relative amplitudes
-    # Get each peak approx. intensity (intensity at the given peak position)
-    for elem in elems:
-        for line in elem.lines:
-                position = line.position_i
-                ind_position = np.argmin(np.abs(np.array(eV)-position))
-                intensity = spectrum[ind_position]
-                line.intensity_0 = float(intensity)
-
-    # If the relative intensity of each line is not known a priori and therefore fitted:
-    # An initial guess is extracted from the intensity of the spectrum at the given line position
-    for elem in elems:
-        # Get the intensity of the most intense line
-        temp_list = []
-        for line in elem.lines:
-            temp_list.append(line.intensity_0)
-        highest = np.max(temp_list)
-
-        # Normalise all the lines relative to the most intense one
-        if elem.isfit_intRel:
-            for line in elem.lines:
-                line.intRel_i = line.intensity_0/highest
-
-
-    # 2) Plot the spectrum and each line given by the user
+    # Plot the spectrum and each line given by the user
     Plot_spectrum(expt, spectrum_index=spectrum_index)
 
     if expt.is_ipysheet: print(expt.prt_peaks)
@@ -1529,7 +1566,7 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
     """
     n = spectrum_index
     eV = expt.eV
-    elems = expt.elems
+    groups = expt.groups
 
     if dparams_list != None:
         # We work on the spectrum specified by spectrum_index
@@ -1549,33 +1586,56 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
         ct_list = dparams_list['ct_list']
 
         # Fit the spectrum with the given parameters
-        for elem in elems:
-            elem.area = elem.area_list[n]
-            for line in elem.lines:
-                line.position = line.position_list[n]
-                line.intRel = line.intRel_list[n]
+        for group in groups:
+            group.area = group.area_list[n]
+            for peak in group.peaks:
+                peak.position = peak.position_list[n]
         dparams = {}
         for name in dparams_list:
             dparams[name[:-5]] = dparams_list[name][n]
-        spectrum_fit = AF.Fcn_spectrum(dparams, elems, eV)
+        spectrum_fit = AF.Fcn_spectrum(dparams, groups, eV)
 
     else:
-        for elem in elems:
-            for line in elem.lines:
-                line.position = line.position_i
+        for group in groups:
+            for peak in group.peaks:
+                peak.position = peak.position_init
 
     # Plot the whole spectrum
     fig = plt.figure(figsize=(15,8))
     ax1 = fig.add_subplot(211)
-    colors = iter(['r', 'b', 'y', 'c', 'm', 'g', 'orange', 'brown']*20)
+    colors = iter(['#006BA4', '#FF800E', '#ABABAB', '#595959', 'k', '#C85200', 'b', '#A2C8EC', '#FFBC79']*20)
+    linestyles = iter(['--', '-.', '-', ':']*40)  
     ax1.set(xlabel = 'E (eV)', ylabel = 'counts')
-    for elem in elems:
-        for line in elem.lines:
-            position = line.position
-            ax1.axvline(x = position,  color = next(colors), linestyle = '--', label = elem.name+' '+line.name)
+
+    
+    elem_dict = {} 
+    for group in expt.groups:
+        
+        # To have one color/label per elem
+        if group.elem_name in elem_dict.keys():
+            color = elem_dict[group.elem_name][0]
+            linestyle = elem_dict[group.elem_name][1]
+            is_first_group_of_elem = False
+        
+        else:
+            color = next(colors)
+            linestyle = next(linestyles)
+            elem_dict.update({group.elem_name:(color,linestyle)})
+            is_first_group_of_elem = True
+            
+        is_first_peak_of_group = True
+        
+        for peak in group.peaks:
+            position = peak.position
+            if (is_first_peak_of_group and is_first_group_of_elem):
+                if expt.is_show_peaks: ax1.axvline(x = position,  color = color, linestyle = linestyle, label = group.elem_name)
+                is_first_peak_of_group = False
+            else:
+                if expt.is_show_peaks: ax1.axvline(x = position,  color = color, linestyle = linestyle, label = '')
+                
     ax1.plot(eV, spectrum, 'k.')
     if dparams_list != None: ax1.plot(eV, spectrum_fit, 'r-')
-    ax1.legend()
+    if expt.is_show_peaks:  ax1.legend()
     plt.setp(ax1.get_xticklabels(), visible=False)
     for item in ([ax1.xaxis.label, ax1.yaxis.label] +
                  ax1.get_xticklabels() + ax1.get_yticklabels()):
@@ -1583,12 +1643,18 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
 
 
     ax2 = fig.add_subplot(212)
-    colors = iter(['r', 'b', 'y', 'c', 'm', 'g', 'orange', 'brown']*20)
+    colors = iter(['#006BA4', '#FF800E', '#ABABAB', '#595959', 'k', '#C85200', 'b', '#A2C8EC', '#FFBC79']*20)
+    linestyles = iter(['--', '-.', '-', ':']*40)  
     ax2.set(xlabel = 'E (eV)', ylabel = 'counts')
-    for elem in elems:
-        for line in elem.lines:
-            position = line.position
-            ax2.axvline(x = position,  color = next(colors), linestyle = '--')
+    for group in groups:
+        
+        color = elem_dict[group.elem_name][0]
+        linestyle = elem_dict[group.elem_name][1]
+         
+        for peak in group.peaks:
+            position = peak.position
+            if expt.is_show_peaks: ax2.axvline(x = position,  color = color, linestyle = linestyle)
+    
     ax2.plot(eV, spectrum, 'k.')
     if dparams_list != None:
         ax2.plot(eV, spectrum_fit, 'r-')
@@ -1612,16 +1678,17 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
 
 
     # Plot each peak
-    colors = iter(['r', 'b', 'y', 'c', 'm', 'g', 'orange', 'brown']*20)
+    colors = iter(['#006BA4', '#FF800E', '#ABABAB', '#595959', '#C85200', 'b', '#A2C8EC', '#FFBC79']*20)
+    linestyles = iter(['-.', '-', ':']*200)  
 
     count = 0
-    for elem in elems:
-        for line in elem.lines:
+    for group in groups:
+        for peak in group.peaks:
             if count%2==0: fig = plt.figure(figsize=(14,4.7))
             plt.subplot(1, 2, count%2+1)
                 
-            position = line.position
-            position_i = line.position_i
+            position = peak.position
+            position_init = peak.position_init
 
             ind_min = np.argmin(np.abs(np.array(eV)-0.9*position))
             ind_max = np.argmin(np.abs(np.array(eV)-1.1*position))
@@ -1631,19 +1698,19 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
 
             if dparams_list != None:
                 spectrum_fit_zoom = spectrum_fit[ind_min:ind_max]
-                intRel = line.intRel_list[n]
-                area = elem.area_list[n]
+                intensity_rel = peak.intensity_rel
+                area = group.area_list[n]
 
-                if line.is_fitpos:
-                    title0 = 'position(init) = %g eV, position(fit)=%g eV'%(position_i,position)
+                if peak.is_fitpos:
+                    title0 = 'position(init) = %g eV, position(fit)=%g eV'%(position_init,position)
                 else:
                     title0 = 'position = %g eV'%(position)
 
-                title = elem.name + ' ' + line.name + '\n' \
-                        +'elem area = %g, relative int = %g'%(area,intRel) + '\n'\
+                title = group.elem_name + ' ' + peak.name + '\n' \
+                        +'group area = %g, relative int = %g'%(area,intensity_rel) + '\n'\
                         + title0
             else:
-                title = elem.name + ' ' + line.name +'\n'+'position = %g eV'%(position)
+                title = group.elem_name + ' ' + peak.name +'\n'+'position = %g eV'%(position)
 
             plt.gca().set_title(title)
 
@@ -1652,12 +1719,19 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
             plt.xlabel('E (eV)')
 
             # Plot each line in the zoom
-            for elem_tmp in elems:
-                for line_tmp in elem_tmp.lines:
-                    position_tmp = line_tmp.position
+            for group_tmp in groups:
+                for peak_tmp in group_tmp.peaks:
+                    position_tmp = peak_tmp.position
                     if (eV[ind_min]<position_tmp and eV[ind_max]>position_tmp):
-                        plt.axvline(x = position_tmp , label = elem_tmp.name+' '+line_tmp.name,
-                                    linestyle = '--', color = next(colors))
+                        if (group_tmp.name==group.name and peak_tmp.name == peak.name):
+                            color = 'k'
+                            linestyle = '--'
+                        else:
+                            color = next(colors)
+                            linestyle = next(linestyles)
+                            
+                        plt.axvline(x = position_tmp , label = group_tmp.elem_name+' '+peak_tmp.name,
+                                    linestyle = linestyle, color = color)
             plt.legend()
 
             if  count%2==1: plt.show()
@@ -1675,39 +1749,54 @@ def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False
     If spectrum_index is given, plot its position on each plot.
     If is_save, save each plot in a png.
     """
-    elems = expt.elems
+    groups = expt.groups
     spectrums = expt.spectrums
 
     scans = np.arange(np.shape(spectrums)[0])
     
+
+
+    
     # Plot areas & save plots
     is_title = True
-    for elem in elems:
-        fig, ax = plt.subplots(figsize=(15,4))
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%g'))
-        plt.plot(scans, elem.area_list, 'r.-', label = 'Area %s'%elem.name)
-        plt.legend()
-        if is_save: plt.savefig(expt.working_dir+expt.id+'/area_'+elem.name+'.png')
-        if spectrum_index!=None: plt.axvline(x = spectrum_index, linestyle = '--', color = 'black')
-        if is_title: 
-            ax.set_title('PEAK AREA\n')
-            ax.title.set_fontsize(18)
-            ax.title.set_fontweight('bold')            
-            is_title = False
-        plt.show()
+    elem_already_plotted = []
+    for group in groups:
+          
+        if group.elem_name not in elem_already_plotted:
+            
+            elem_already_plotted = np.append(elem_already_plotted, group.elem_name)
+            
+            fig, ax = plt.subplots(figsize=(15,4))
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%g'))
+
+            # To group elem on the same plot
+            for group_tmp in groups:
+                if group_tmp.elem_name == group.elem_name:             
+                    list_lines_str = '['+' '.join([p.name for p in group_tmp.peaks])+']'
+                    plt.plot(scans, group_tmp.area_list, '.-', label = 'Area %s %s'%(group_tmp.elem_name,list_lines_str))
+
+            plt.legend()
+            if is_save: plt.savefig(expt.working_dir+expt.id+'/area_'+group.name+'.png')
+            if spectrum_index!=None: plt.axvline(x = spectrum_index, linestyle = '--', color = 'black')
+            if is_title: 
+                ax.set_title('AREAS\n')
+                ax.title.set_fontsize(18)
+                ax.title.set_fontweight('bold')            
+                is_title = False
+            plt.show()
 
     # Plot positions & save plots
     is_title = True
-    for elem in elems:
-        for line in elem.lines:
-            if line.is_fitpos:
+    for group in groups:
+        for peak in group.peaks:
+            if peak.is_fitpos:
                 fig, ax = plt.subplots(figsize=(15,4))                  
                 ax.yaxis.set_major_formatter(FormatStrFormatter('%g'))
-                plt.plot(scans, line.position_list, 'b.-', label = 'Position %s '%(elem.name+'.'+line.name))
+                plt.plot(scans, peak.position_list, 'b.-', label = 'Position %s '%(group.elem_name+'.'+peak.name))
                 plt.legend()
-                if is_save: plt.savefig(expt.working_dir+expt.id+'/position_'+elem.name+line.name+'.png')
+                if is_save: plt.savefig(expt.working_dir+expt.id+'/position_'+group.elem_name+peak.name+'.png')
                 if is_title:
-                    ax.set_title('PEAK POSITION\n')
+                    ax.set_title('POSITIONS\n')
                     ax.title.set_fontsize(18)
                     ax.title.set_fontweight('bold')
                     is_title = False
@@ -1744,6 +1833,8 @@ def Choose_spectrum_to_plot(expt):
         clear_output(wait=True)
         Display_panel(expt)
         
+        expt.is_show_peaks = w_is_show_peaks.value
+        
         code = 'FF.Load_results(expt, spectrum_index='+str(w_index.value)+')'
         Create_cell(code=code, position='below', celltype='code', is_print=True, is_execute=True)
 
@@ -1754,19 +1845,29 @@ def Choose_spectrum_to_plot(expt):
         clear_output(wait=True)
         Display_panel(expt)
         
-        display(widgets.HBox([w_index, button_display]))
+        expt.is_show_peaks = w_is_show_peaks.value
+        
+        display(widgets.HBox([w_index, w_is_show_peaks, button_display]))        
         display(button_add)
         
         # Plot the spectrum and fit
         Load_results(expt, w_index.value)
 
         
-    w_index = widgets.IntText(description="Spectrum:",layout=widgets.Layout(width='300px'))
+    w_index = widgets.IntText(description="Spectrum:",
+                              style=style,
+                              layout=widgets.Layout(width='200px'))
         
+    w_is_show_peaks = widgets.Checkbox(
+                              description='Show peaks?',
+                              value=expt.is_show_peaks,
+                              style=style,
+                              layout=widgets.Layout(width='150px'))
+    
     button_display = widgets.Button(description="Preview the selected plot",layout=widgets.Layout(width='300px'))
     button_display.on_click(on_button_display_clicked)
     
-    display(widgets.HBox([w_index, button_display]))        
+    display(widgets.HBox([w_index, w_is_show_peaks, button_display]))        
         
     button_add = widgets.Button(description="Add the selected plot",layout=widgets.Layout(width='300px'))
     button_add.on_click(on_button_add_clicked)
@@ -1777,7 +1878,7 @@ def Load_results(expt, spectrum_index=0):
     Load and plot the results of a previous fit.
     Redo the fit with all the results from FitResults.csv
     """
-    elems = expt.elems
+    groups = expt.groups
 
     dparams_list = {'sl_list','ct_list',
                     'sfa0_list','sfa1_list','tfb0_list','tfb1_list',
@@ -1788,24 +1889,22 @@ def Load_results(expt, spectrum_index=0):
     # Init all the lists
     dparams_list = dict.fromkeys(dparams_list, np.array([]))
 
-    for elem in elems:
-        elem.area_list = np.array([])
-        for line in elem.lines:
-            line.intRel_list = np.array([])
-            line.position_list = np.array([])
+    for group in groups:
+        group.area_list = np.array([])
+        for peak in group.peaks:
+            peak.intensity_rel_list = np.array([])
+            peak.position_list = np.array([])
 
 
     with open(expt.working_dir+expt.id+'/FitResults.csv', "r") as f:
         reader = csv.DictReader(f, delimiter=expt.delimiter)
         for row in reader:
-            for elem in elems:
-                elem.area_list = np.append(elem.area_list, np.float(row['#'+elem.name+'.area'].replace(',','.')))
+            for group in groups:
+                group.area_list = np.append(group.area_list, np.float(row['#'+group.name+'.area'].replace(',','.')))
 
-                for line in elem.lines:
-                    line.intRel_list = np.append(line.intRel_list,
-                                                 np.float(row['#'+elem.name+'.'+line.name+'.intRel'].replace(',','.')))
-                    line.position_list = np.append(line.position_list,
-                                                   np.float(row['#'+elem.name+'.'+line.name+'.position'].replace(',','.')))
+                for peak in group.peaks:
+                    peak.position_list = np.append(peak.position_list,
+                                       np.float(row['#'+group.elem_name+'.'+peak.name+'.position'].replace(',','.')))
 
             for name in dparams_list:
                     dparams_list[name] = np.append(dparams_list[name], np.float(row['#'+name[:-5]].replace(',','.')))
@@ -1843,35 +1942,38 @@ def Load_results(expt, spectrum_index=0):
     # Restore it to png only to avoid large file size
     set_matplotlib_formats('png') 
 
-class Elem:
+class Group:
     """
-    Class for fluo elements (ex: Au, Cl, Ar, ...).
+    Class for group of peaks from a same element and with the same initial level.
     """
-    def __init__(self, name, isfit_intRel = True):
+    def __init__(self, name):
+        
+        # Name of the group elem_initialLevel (Au_K, Cl_L1, ...)
         self.name = name
-        self.lines = []
-
-        # Set if the relative intensity is fitted
-        self.isfit_intRel = isfit_intRel
-
-class Line:
+        
+        # Array for peaks
+        self.peaks = []
+        
+        
+class Peak:
     """
-    Class for fluo lines (ex: La1, Lb3, ...) of a given element.
+    Class for fluo peak belongin to a Group.
     """
     
-    def __init__(self, name, position_i, intRel_i = 1., is_fitpos = False):
+    def __init__(self, name, position_init, strength, is_fitpos = False):
+        
+        # Name after the corresponding line (La1, Lb3, X, ...)
         self.name = name
 
-        # Position before any fit
-        self.position_i = position_i
+        # Position before fit, as given by the user
+        self.position_init = position_init
+        
+        # Strength of the line
+        self.strength = strength
 
         # Set if the position of the line is fitted
         self.is_fitpos = is_fitpos
 
-        # The relative intensity (relative to the most intense one,
-        # i.e. intRel = 1 for the most intense line of an elem)
-        # If isfit_intRel = True, it will be fitted, else it should be given
-        self.intRel_i = intRel_i
 
 
 
