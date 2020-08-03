@@ -472,6 +472,7 @@ def Display_panel(expt):
                     'is_ipysheet',
                     'delimiter',
                     'fitstuck_limit',
+                    'min_strength',
                     'is_fast',
                     'list_isfit_str',
                     'sl',
@@ -491,7 +492,8 @@ def Display_panel(expt):
                     'epsilon',
                     'fano',
                     'is_transmitted',
-                    'is_peaks_on_sum'
+                    'is_peaks_on_sum',
+                    'is_show_peaks'
                     ])
             writer.writerow(header)
 
@@ -510,6 +512,7 @@ def Display_panel(expt):
                     expt.is_ipysheet,
                     expt.delimiter,
                     expt.fitstuck_limit,
+                    expt.min_strength,
                     expt.is_fast,
                     expt.list_isfit_str,
                     expt.sl,
@@ -529,7 +532,8 @@ def Display_panel(expt):
                     expt.epsilon,
                     expt.fano,
                     expt.is_transmitted,
-                    expt.is_peaks_on_sum
+                    expt.is_peaks_on_sum,
+                    expt.is_show_peaks
                     ])
                     
 
@@ -639,7 +643,6 @@ def Set_params(expt):
         Set_subsets(expt)
         Plot_subsets(expt)
         
-        print(PN._RED+"Extraction finished."+PN._RESET)
 
 
     def update_params():
@@ -659,6 +662,7 @@ def Set_params(expt):
         expt.is_ipysheet = w_is_ipysheet.value
         expt.delimiter = w_delimiter.value
         expt.fitstuck_limit = w_fitstuck_limit.value
+        expt.min_strength = w_min_strength.value
         expt.is_fast = w_is_fast.value
         expt.sl = w_sl.value
         expt.ct = w_ct.value
@@ -711,6 +715,7 @@ def Set_params(expt):
                     'is_ipysheet',
                     'delimiter',
                     'fitstuck_limit',
+                    'min_strength',
                     'is_fast',
                     'list_isfit_str',
                     'sl',
@@ -750,6 +755,7 @@ def Set_params(expt):
                     expt.is_ipysheet,
                     expt.delimiter,
                     expt.fitstuck_limit,
+                    expt.min_strength,
                     expt.is_fast,
                     expt.list_isfit_str,
                     expt.sl,
@@ -792,6 +798,7 @@ def Set_params(expt):
             is_ipysheet = eval(row['is_ipysheet'])
             delimiter = str(row['delimiter'])
             fitstuck_limit = int(row['fitstuck_limit'])
+            min_strength = float(row['min_strength'].replace(',', '.'))
             is_fast = eval(row['is_fast'])
             list_isfit_str = str(row['list_isfit_str'])
             sl = float(row['sl'].replace(',', '.'))
@@ -905,6 +912,12 @@ def Set_params(expt):
         layout=widgets.Layout(width='150px'),
         style=style)
 
+    w_min_strength = widgets.FloatText(
+        value=min_strength,
+        description='Strength min.',
+        layout=widgets.Layout(width='150px'),
+        style=style)    
+    
     # Fit params: boolean
     w_is_fast = widgets.Checkbox(
         value=is_fast,
@@ -1145,7 +1158,7 @@ def Set_params(expt):
     display(widgets.HBox([w_fA, w_fB, w_gammaA,w_gammaB]))  
 
     print("-"*100)
-    display(widgets.HBox([w_gain, w_eV0, w_delimiter, w_fitstuck_limit]))
+    display(widgets.HBox([w_gain, w_eV0, w_delimiter, w_fitstuck_limit, w_min_strength]))
     display(widgets.HBox([w_is_ipysheet, w_is_fast, w_is_transmitted, w_is_peaks_on_sum, w_is_show_peaks]))
 
     display(widgets.HBox([button_extract]))
@@ -1330,12 +1343,6 @@ def Plot_subsets(expt):
     yticks[-1].label1.set_visible(False)
     plt.subplots_adjust(hspace=.0)
 
-    if np.sum(expt.spectrums[0])<10.:
-        CBOLD = '\033[1m'
-        CEND = '\033[0m'
-        # The fitting procedure requires that the first five spectrums are not empty
-        print(CBOLD + 'ERROR: The first spectrum cannot be empty!!!' + CEND)
-
 
 def Set_peaks(expt):
     """
@@ -1449,8 +1456,14 @@ def Set_peaks(expt):
                 # Construct the list of initial levels from the chosen atom
                 initial_level_list = []
                 for name, line in xraydb.xray_lines(atom_chosen).items():
-                    if str(line.initial_level) not in initial_level_list:
-                        initial_level_list = np.append(initial_level_list, str(line.initial_level))
+                    if line.initial_level not in initial_level_list:
+                        if line.initial_level == 'M4,5':
+                            # Avoid weird naming of level from the database
+                            initial_level = 'M4'
+                        else:
+                            initial_level = line.initial_level
+                            
+                        initial_level_list = np.append(initial_level_list, initial_level)
 
                 # To avoid a warning from numpy        
                 initial_level_list = [elem for elem in initial_level_list]
@@ -1463,27 +1476,58 @@ def Set_peaks(expt):
                     print('Peaks to be added:')
                     print('')
 
-                    for name, line in xraydb.xray_lines(atom_chosen, initial_level_chosen).items():    
+                    for name, line in xraydb.xray_lines(atom_chosen, initial_level_chosen).items():
+                        # Because of weird naming of Lb2 in the database
+                        if name == 'Lb2,15': name = 'Lb2'
                         print('Line name: %s, energy (eV): %s, strength: %s'%(name, line.energy, line.intensity))
+                    
+                    if initial_level_chosen == 'M4':
+                        # Because of the weird naming of M4,5 in the database, need to add it manually
+                        for name, line in xraydb.xray_lines(atom_chosen, 'M4,5').items():    
+                            print('Line name: %s, energy (eV): %s, strength: %s'%(name, line.energy, line.intensity))
 
                     def on_button_add_group_clicked(b):
                         """
                         Add the group of peaks to the file "Peaks.csv"
                         """
-
+                        
+                        # Rewrite the previous peaks (without the empty lines)
                         with open(expt.working_dir+expt.id+'/Peaks.csv', "w", newline='') as f:
                             writer = csv.writer(f,delimiter=expt.delimiter)
                             writer.writerow(expt.peaks_header)
-                            writer.writerows([elem for elem in expt.arr_peaks if elem[0]!=''])
+                            writer.writerows([elem for elem in expt.arr_peaks_all if elem[0]!=''])
                             
-                       
+                        # Add the new lines
                         for name, line in xraydb.xray_lines(atom_chosen, initial_level_chosen).items():
+                            # Because of weird naming of L2 in the database
+                            if name == 'Lb2,15': name = 'Lb2'
                             tbw = [[atom_chosen,name,str(line.energy),str(line.intensity),'no','yes']]
-                            
                             
                             with open(expt.working_dir+expt.id+'/Peaks.csv', "a", newline='') as f:
                                 writer = csv.writer(f,delimiter=expt.delimiter)
                                 writer.writerows(tbw)
+                                
+                        if initial_level_chosen == 'M4':
+                            # Because of the weird naming of M4,5 in the database, need to add it manually
+                            for name, line in xraydb.xray_lines(atom_chosen, 'M4,5').items():
+                                tbw = [[atom_chosen,name,str(line.energy),str(line.intensity),'no','yes']]
+
+                                with open(expt.working_dir+expt.id+'/Peaks.csv', "a", newline='') as f:
+                                    writer = csv.writer(f,delimiter=expt.delimiter)
+                                    writer.writerows(tbw)
+
+                        
+                        # Reconstruct expt.arr_peaks with the new lines        
+                        arr_peaks_all = np.array([])
+                        with open(expt.working_dir+expt.id+'/Peaks.csv', "r") as f:
+                            csvreader = csv.reader(f, delimiter=expt.delimiter)
+                            # First line is the header
+                            expt.peaks_header = next(csvreader)
+                            for row in csvreader:
+                                arr_peaks_all = np.append(arr_peaks_all, row)
+                                
+                        arr_peaks_all = np.reshape(arr_peaks_all, (len(arr_peaks_all)//nb_columns,nb_columns))
+                        expt.arr_peaks_all = arr_peaks_all
                         
                         print(PN._RED+"Done!"+PN._RESET)
                         print(PN._RED+"Click on Set peaks to check peaks."+PN._RESET)
@@ -1547,6 +1591,7 @@ def Extract_groups(expt):
     expt.is_fit_ready = True
     
     # Remove the peaks which are not fitted from scan.arr_peaks
+    expt.arr_peaks_all = expt.arr_peaks
     expt.arr_peaks = expt.arr_peaks[np.where(expt.arr_peaks[:,5]!='no')]
 
     # List of groups of peaks (same elem, same initial level)
@@ -1565,7 +1610,7 @@ def Extract_groups(expt):
             # Determine the initial level from the line name
             if (line_name[0] == 'K'):
                 initial_level_name = 'K'
-            elif line_name in ['La1','La2','Lb2','Lb5','Lb6','Ll']:
+            elif line_name in ['La1','La2','Lb2','Lb2,15','Lb5','Lb6','Ll']:
                 initial_level_name = 'L3'
             elif line_name in ['Lb1','Lg1','Lg6','Ln']:
                 initial_level_name = 'L2'
@@ -1573,12 +1618,10 @@ def Extract_groups(expt):
                 initial_level_name = 'L1'
             elif line_name=='Ma':
                 initial_level_name = 'M5'
-            elif line_name=='Mb':
+            elif line_name in ['Mb', 'Mz']:
                 initial_level_name = 'M4'
             elif line_name=='Mg':
-                initial_level_name = 'M3'
-            elif line_name=='Mz':
-                initial_level_name = 'M4,5'       
+                initial_level_name = 'M3'       
             else:
                 initial_level_name = line_name
                                 
@@ -1749,10 +1792,13 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
         for peak in group.peaks:
             position = peak.position
             if (is_first_peak_of_group and is_first_group_of_elem):
-                if expt.is_show_peaks: ax1.axvline(x = position,  color = color, linestyle = linestyle, label = group.elem_name)
-                is_first_peak_of_group = False
+                if (expt.is_show_peaks and peak.strength>expt.min_strength):
+                    # Plot the peak only if asked, and if its strength is > than a min value
+                    ax1.axvline(x = position,  color = color, linestyle = linestyle, label = group.elem_name)
+                    is_first_peak_of_group = False
             else:
-                if expt.is_show_peaks: ax1.axvline(x = position,  color = color, linestyle = linestyle, label = '')
+                if (expt.is_show_peaks and peak.strength>expt.min_strength):
+                    ax1.axvline(x = position,  color = color, linestyle = linestyle, label = '')
                 
     ax1.plot(eV, spectrum, 'k.')
     if dparams_list != None: ax1.plot(eV, spectrum_fit, 'r-')
@@ -1774,7 +1820,9 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
          
         for peak in group.peaks:
             position = peak.position
-            if expt.is_show_peaks: ax2.axvline(x = position,  color = color, linestyle = linestyle)
+            if (expt.is_show_peaks and peak.strength>expt.min_strength):
+                # Plot the peak only if asked, and if its strength is > than a min value
+                ax2.axvline(x = position,  color = color, linestyle = linestyle)
     
     ax2.plot(eV, spectrum, 'k.')
     if dparams_list != None:
@@ -1897,7 +1945,7 @@ def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False
                     plt.plot(scans, group_tmp.area_list, '.-', label = 'Area %s %s'%(group_tmp.elem_name,list_lines_str))
 
             plt.legend()
-            if is_save: plt.savefig(expt.working_dir+expt.id+'/area_'+group.name+'.png')
+            if is_save: plt.savefig(expt.working_dir+expt.id+'/area_'+group.elem_name+'.png')
             if spectrum_index!=None: plt.axvline(x = spectrum_index, linestyle = '--', color = 'black')
             if is_title: 
                 ax.set_title('AREAS\n')
@@ -1915,7 +1963,7 @@ def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False
                 ax.yaxis.set_major_formatter(FormatStrFormatter('%g'))
                 plt.plot(scans, peak.position_list, 'b.-', label = 'Position %s '%(group.elem_name+'.'+peak.name))
                 plt.legend()
-                if is_save: plt.savefig(expt.working_dir+expt.id+'/position_'+group.elem_name+peak.name+'.png')
+                if is_save: plt.savefig(expt.working_dir+expt.id+'/position_'+group.elem_name+'_'+peak.name+'.png')
                 if is_title:
                     ax.set_title('POSITIONS\n')
                     ax.title.set_fontsize(18)
@@ -2025,7 +2073,7 @@ def Load_results(expt, spectrum_index=0):
 
                 for peak in group.peaks:
                     peak.position_list = np.append(peak.position_list,
-                                       np.float(row['#'+group.elem_name+'.'+peak.name+'.position'].replace(',','.')))
+                                       np.float(row['#'+group.elem_name+'_'+peak.name+'.position'].replace(',','.')))
 
             for name in dparams_list:
                     dparams_list[name] = np.append(dparams_list[name], np.float(row['#'+name[:-5]].replace(',','.')))
@@ -2084,7 +2132,11 @@ class Peak:
     def __init__(self, name, position_init, strength, is_fitpos = False):
         
         # Name after the corresponding line (La1, Lb3, X, ...)
-        self.name = name
+        if name == 'Lb2,15':
+            # Correct a weird name for Lb2 in the database
+            self.name = 'Lb2'
+        else:
+            self.name = name
 
         # Position before fit, as given by the user
         self.position_init = position_init

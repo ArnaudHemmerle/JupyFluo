@@ -21,7 +21,7 @@ from IPython.display import clear_output
 
 
 
-__version__="0.4"
+__version__="0.5"
 
 """
 Here are defined the functions for analysis.
@@ -104,7 +104,7 @@ def Fit_spectrums(expt, is_save=True):
             header = np.append(header, '#'+group.name+'.area')
                 
             for peak in group.peaks:
-                header = np.append(header,'#'+group.elem_name+'.'+peak.name+'.position')
+                header = np.append(header,'#'+group.elem_name+'_'+peak.name+'.position')
 
         for name in dparams_list:
             header = np.append(header, '#'+name[:-5])                    
@@ -194,8 +194,8 @@ def Fit_spectrums(expt, is_save=True):
         dparams_lm.add('sfa1', value=dparams_0['sfa1'], min = 0.)
         dparams_lm.add('tfb0', value=dparams_0['tfb0'])
         dparams_lm.add('tfb1', value=dparams_0['tfb1'], min = 0.)
-        dparams_lm.add('twc0', value=dparams_0['twc0'])
-        dparams_lm.add('twc1', value=dparams_0['twc1'], min = 0.)
+        dparams_lm.add('twc0', value=dparams_0['twc0'], min = 0.1, max = 0.7)
+        dparams_lm.add('twc1', value=dparams_0['twc1'], min = 0., max = 0.5)
         dparams_lm.add('noise', value=dparams_0['noise'])
         dparams_lm.add('fano', value=dparams_0['fano'])
         dparams_lm.add('epsilon', value=dparams_0['epsilon'])
