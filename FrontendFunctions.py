@@ -26,8 +26,12 @@ try:
 except:
     print('Careful: the module ipysheet is not installed!')
 
+try:
+    import xraydb
+except:
+    print('Careful: the module xraydb is not installed!')
     
-__version__="0.9"
+__version__="0.10"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
@@ -354,7 +358,19 @@ def Display_panel(expt):
         # Copy the current params as the defaut file
         shutil.copy(expt.working_dir+expt.id+'/Peaks.csv','DefaultPeaks.csv')
         
-        print("Current set of peaks saved as default.")
+        print("Current set of peaks saved as the default one.")
+        
+    def on_button_reload_peaks_clicked(b):
+        """Reload the default peaks as current ones."""
+
+        # Clear the plots and reput the boxes
+        clear_output(wait=True)
+        Display_panel(expt)
+        
+        # Copy the current params as the defaut file
+        shutil.copy('DefaultPeaks.csv', expt.working_dir+expt.id+'/Peaks.csv')
+        
+        print("Default set of peaks saved as the current one.")        
         
         
     def on_button_start_fit_clicked(b):
@@ -542,6 +558,9 @@ def Display_panel(expt):
         
         button_plot_peaks = widgets.Button(description="Set peaks",layout=widgets.Layout(width='200px'))
         button_plot_peaks.on_click(on_button_plot_peaks_clicked)   
+        
+        button_reload_peaks = widgets.Button(description="Reload default peaks",layout=widgets.Layout(width='250px'))
+        button_reload_peaks.on_click(on_button_reload_peaks_clicked)
 
         button_save_peaks = widgets.Button(description="Save current peaks as default",layout=widgets.Layout(width='250px'))
         button_save_peaks.on_click(on_button_save_peaks_clicked)
@@ -549,7 +568,7 @@ def Display_panel(expt):
         print("Set peaks:")
         
         if expt.is_fit_ready:
-            display(widgets.HBox([button_plot_peaks,button_save_peaks])) 
+            display(widgets.HBox([button_plot_peaks,button_reload_peaks, button_save_peaks])) 
         else:
             display(button_plot_peaks)
         print(100*"-")        
@@ -1325,8 +1344,6 @@ def Set_peaks(expt):
     3) Save the peaks in Peaks.csv
     Update scan.arr_peaks, with the info on the peaks later used to create the Group and Peak objects.
     """
-    
-    nb_rows = 40
 
     # Array which will contain the info on peaks
     arr_peaks = np.array([])
@@ -1346,18 +1363,26 @@ def Set_peaks(expt):
     
     # String to print the peaks
     prt_peaks = '\t'.join([str(cell) for cell in expt.peaks_header])+'\n'
-    prt_peaks += '\n'.join(['\t \t'.join([str(cell) for cell in row]) for row in arr_peaks if row[0]!=''])+'\n'
+    prt_peaks += '\n'.join(['\t \t'.join([str(cell[0:7]) for cell in row]) for row in arr_peaks if row[0]!=''])+'\n'
     prt_peaks += "Peaks saved in:\n%s"%(expt.working_dir+expt.id+'/Peaks.csv')
 
     expt.arr_peaks = arr_peaks
     expt.prt_peaks = prt_peaks
+    
+    # Determine the number of rows to have a fixed number of empty rows
+    nb_filled_rows = len([elem for elem in arr_peaks if elem[0]!=''])
+    nb_empty_rows = len([elem for elem in arr_peaks if elem[0]==''])
+    if nb_empty_rows<15:
+        nb_rows = nb_filled_rows+15
+    else:
+        nb_rows = np.shape(arr_peaks)[0]
     
     
     if expt.is_ipysheet:
         sheet = ipysheet.easy.sheet(columns=nb_columns, rows=nb_rows ,column_headers = expt.peaks_header)
 
         # ipysheet does not work correctly with no entries
-        # It is necessary to fill first the cells with something
+        # it is necessary to fill first the cells with something
         nb_rows_to_fill = nb_rows - np.shape(arr_peaks)[0]
         fill = np.reshape(np.array(nb_rows_to_fill*nb_columns*['']),
                           (nb_rows_to_fill, nb_columns))
@@ -1367,6 +1392,9 @@ def Set_peaks(expt):
             ipysheet.easy.column(i,  arr_peaks[:,i])
             
         def on_button_update_clicked(b):
+            """
+            Update the peaks in the sheet by writing in Peaks.csv and re-displaying the peaks and panel
+            """
        
             # Clear the plots and reput the boxes
             clear_output(wait=True)
@@ -1382,26 +1410,119 @@ def Set_peaks(expt):
                 writer = csv.writer(f,delimiter=expt.delimiter)
                 writer.writerow(expt.peaks_header)
                 writer.writerows(arr_peaks)
+                
+            # Reput the sheet set peaks
+            Set_peaks(expt)
 
-            # String to print the peaks
-            prt_peaks = '\t'.join([str(cell) for cell in expt.peaks_header])+'\n'
-            prt_peaks += '\n'.join(['\t \t'.join([str(cell) for cell in row]) for row in arr_peaks if row[0]!=''])+'\n'
-            prt_peaks += "Peaks saved in:\n%s"%(expt.working_dir+expt.id+'/Peaks.csv')
+            # Extract the info from the sheet
+            Extract_groups(expt)
+
+            # Display the peaks on the selected spectrum or on the sum
+            if expt.is_peaks_on_sum:
+                Display_peaks(expt)
+            else:
+                w = widgets.interact(Display_peaks,
+                                     expt=widgets.fixed(expt),
+                                     spectrum_index=widgets.IntText(value=0, step=1, description='Spectrum:'))
 
             expt.arr_peaks = arr_peaks
-            expt.prt_peaks = prt_peaks
             
-            print(prt_peaks)
-            print(" ")
-            print(PN._RED+"Click on \'Set peaks\' to check the peaks on the spectrum."+PN._RESET) 
-            print(" ")
-            print(PN._RED+"Click on \'Start fit\' to start the fit."+PN._RESET) 
+        def on_button_add_from_db_clicked(b):
+            """
+            Add a peak from the database.
+            Selection is made through nested interactive widgets.
+            The selected group of peaks is then written in Peaks.csv. 
+            """
             
-        button_update = widgets.Button(description="Update Peaks")
+            # Clear the plots and reput the boxes
+            clear_output(wait=True)
+            Display_panel(expt)
+            
+            # Create the list of atoms based on the database
+            atom_name_list = [str(xraydb.atomic_symbol(i)) for i in range(1,99)]
+
+            def select_group(atom_chosen):
+                """
+                Widget to show and select the group of peaks to add (with the same initial level).
+                """
+
+                # Construct the list of initial levels from the chosen atom
+                initial_level_list = []
+                for name, line in xraydb.xray_lines(atom_chosen).items():
+                    if str(line.initial_level) not in initial_level_list:
+                        initial_level_list = np.append(initial_level_list, str(line.initial_level))
+
+                # To avoid a warning from numpy        
+                initial_level_list = [elem for elem in initial_level_list]
+
+                def print_group(initial_level_chosen):
+                    """
+                    Print the group of peaks belonging to the same selected initial level.
+                    """
+
+                    print('Peaks to be added:')
+                    print('')
+
+                    for name, line in xraydb.xray_lines(atom_chosen, initial_level_chosen).items():    
+                        print('Line name: %s, energy (eV): %s, strength: %s'%(name, line.energy, line.intensity))
+
+                    def on_button_add_group_clicked(b):
+                        """
+                        Add the group of peaks to the file "Peaks.csv"
+                        """
+
+                        with open(expt.working_dir+expt.id+'/Peaks.csv', "w", newline='') as f:
+                            writer = csv.writer(f,delimiter=expt.delimiter)
+                            writer.writerow(expt.peaks_header)
+                            writer.writerows([elem for elem in expt.arr_peaks if elem[0]!=''])
+                            
+                       
+                        for name, line in xraydb.xray_lines(atom_chosen, initial_level_chosen).items():
+                            tbw = [[atom_chosen,name,str(line.energy),str(line.intensity),'no','yes']]
+                            
+                            
+                            with open(expt.working_dir+expt.id+'/Peaks.csv', "a", newline='') as f:
+                                writer = csv.writer(f,delimiter=expt.delimiter)
+                                writer.writerows(tbw)
+                        
+                        print(PN._RED+"Done!"+PN._RESET)
+                        print(PN._RED+"Click on Set peaks to check peaks."+PN._RESET)
+                        print(PN._RED+"Click on Start fit to directly start the fit."+PN._RESET)
+                        
+                        
+                    # Button to add the displayed group of peaks
+                    button_add_group = widgets.Button(description="Add group of peaks",layout=widgets.Layout(width='300px'))
+                    button_add_group.on_click(on_button_add_group_clicked)
+
+                    display(button_add_group)
+
+                w_print_group =  widgets.interact(print_group,
+                                initial_level_chosen = widgets.Dropdown(
+                                options=initial_level_list,
+                                description='Select initial level:',
+                                layout=widgets.Layout(width='200px'),
+                                style=style) 
+                                )
+
+            w_select_atom = widgets.interact(select_group,
+                                atom_chosen = widgets.Dropdown(
+                                options=atom_name_list,
+                                value = 'Ar',
+                                description='Select atom:',
+                                layout=widgets.Layout(width='200px'),
+                                style=style) 
+                                )
+
+ 
+            
+        button_update = widgets.Button(description="Update peaks")
         button_update.on_click(on_button_update_clicked)
+        
+        button_add_from_db = widgets.Button(description="Add peaks from database", layout=widgets.Layout(width='300px'))
+        button_add_from_db.on_click(on_button_add_from_db_clicked)
                    
         display(sheet)
-        display(button_update) 
+        display(widgets.HBox([button_update, button_add_from_db])) 
 
     else:
         print("Peaks imported from %s"%(expt.working_dir+expt.id+'/Peaks.csv'))
@@ -1457,7 +1578,7 @@ def Extract_groups(expt):
             elif line_name=='Mg':
                 initial_level_name = 'M3'
             elif line_name=='Mz':
-                initial_level_name = 'M45'       
+                initial_level_name = 'M4,5'       
             else:
                 initial_level_name = line_name
                                 
@@ -1603,8 +1724,8 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
     # Plot the whole spectrum
     fig = plt.figure(figsize=(15,8))
     ax1 = fig.add_subplot(211)
-    colors = iter(['#006BA4', '#FF800E', '#ABABAB', '#595959', 'k', '#C85200', 'b', '#A2C8EC', '#FFBC79']*20)
-    linestyles = iter(['--', '-.', '-', ':']*40)  
+    colors = iter(['#006BA4', '#FF800E', '#ABABAB', '#595959', 'k', '#C85200', 'b', '#A2C8EC', '#FFBC79']*200)
+    linestyles = iter(['--', '-.', '-', ':']*400)  
     ax1.set(xlabel = 'E (eV)', ylabel = 'counts')
 
     
@@ -1643,8 +1764,8 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
 
 
     ax2 = fig.add_subplot(212)
-    colors = iter(['#006BA4', '#FF800E', '#ABABAB', '#595959', 'k', '#C85200', 'b', '#A2C8EC', '#FFBC79']*20)
-    linestyles = iter(['--', '-.', '-', ':']*40)  
+    colors = iter(['#006BA4', '#FF800E', '#ABABAB', '#595959', 'k', '#C85200', 'b', '#A2C8EC', '#FFBC79']*200)
+    linestyles = iter(['--', '-.', '-', ':']*400)  
     ax2.set(xlabel = 'E (eV)', ylabel = 'counts')
     for group in groups:
         
@@ -1678,8 +1799,8 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
 
 
     # Plot each peak
-    colors = iter(['#006BA4', '#FF800E', '#ABABAB', '#595959', '#C85200', 'b', '#A2C8EC', '#FFBC79']*20)
-    linestyles = iter(['-.', '-', ':']*200)  
+    colors = iter(['#006BA4', '#FF800E', '#ABABAB', '#595959', '#C85200', 'b', '#A2C8EC', '#FFBC79']*200)
+    linestyles = iter(['-.', '-', ':']*400)  
 
     count = 0
     for group in groups:
