@@ -8,6 +8,8 @@ import matplotlib.colors as mplcolors
 from matplotlib.ticker import FormatStrFormatter
 
 import numpy as np
+# Avoid warning from explosive exponential
+np.seterr(all='ignore')
 from numpy import linalg
 from math import isclose
 from scipy.special import erfc
@@ -427,14 +429,8 @@ def Fcn_spectrum(dparams, groups, eV):
             position = peak.position
             intensity_rel = peak.intensity_rel
             if group.elem_name == 'Compton':
-                #ppic, gau, she, tail = Fcn_compton_peak(position,intensity_rel,eV,dparams)
-                
-                #spectrum_group += area*ppic
-                compton = area*Fcn_compton_peak(position,intensity_rel,eV,dparams)
+                compton += area*Fcn_compton_peak(position,intensity_rel,eV,dparams)
                 spectrum_group += compton
-                #gau_group += area*gau
-                #she_group += area*she
-                #tail_group += area*tail
             else:
                 ppic, gau, she, tail = Fcn_peak(position,intensity_rel,eV,dparams)
                 spectrum_group += area*ppic
@@ -559,6 +555,7 @@ def Fcn_peak(pos, amp, eV, dparams):
 
     # Function tail T(i, Ejk)
     tail = amp/(2.*wid*TW)*np.exp(farg/TW+1/(2*TW**2))*erfc(farg/np.sqrt(2.)+1./(np.sqrt(2.)*TW))
+   
     # Avoid numerical instabilities
     tail = np.where(tail>1e-10,tail, 0.)
 
