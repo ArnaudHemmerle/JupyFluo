@@ -31,7 +31,7 @@ try:
 except:
     print('Careful: the module xraydb is not installed!')
     
-__version__="0.10"
+__version__="0.11"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
@@ -493,7 +493,8 @@ def Display_panel(expt):
                     'fano',
                     'is_transmitted',
                     'is_peaks_on_sum',
-                    'is_show_peaks'
+                    'is_show_peaks',
+                    'is_show_subfunctions'
                     ])
             writer.writerow(header)
 
@@ -533,7 +534,8 @@ def Display_panel(expt):
                     expt.fano,
                     expt.is_transmitted,
                     expt.is_peaks_on_sum,
-                    expt.is_show_peaks
+                    expt.is_show_peaks,
+                    expt.is_show_subfunctions
                     ])
                     
 
@@ -683,6 +685,7 @@ def Set_params(expt):
         expt.is_transmitted = w_is_transmitted.value
         expt.is_peaks_on_sum = w_is_peaks_on_sum.value
         expt.is_show_peaks = w_is_show_peaks.value
+        expt.is_show_subfunctions = w_is_show_subfunctions.value
         
         # Particular case of list_isfit, going from str to array
         list_isfit = ['sl'*w_is_sl.value, 'ct'*w_is_ct.value, 'noise'*w_is_noise.value,
@@ -736,7 +739,8 @@ def Set_params(expt):
                     'fano',
                     'is_transmitted',
                     'is_peaks_on_sum',
-                    'is_show_peaks'
+                    'is_show_peaks',
+                    'is_show_subfunctions'
                     ])
             writer.writerow(header)
             
@@ -776,7 +780,8 @@ def Set_params(expt):
                     expt.fano,
                     expt.is_transmitted,
                     expt.is_peaks_on_sum,
-                    expt.is_show_peaks
+                    expt.is_show_peaks,
+                    expt.is_show_subfunctions
                     ])
 
 
@@ -820,6 +825,7 @@ def Set_params(expt):
             is_transmitted = eval(row['is_transmitted'])
             is_peaks_on_sum = eval(row['is_peaks_on_sum'])
             is_show_peaks = eval(row['is_show_peaks'])
+            is_show_subfunctions = eval(row['is_show_subfunctions'])
        
     # convert list_isfit_str into a list
     list_isfit = [str(list_isfit_str.split(',')[i]) for i in range(len(list_isfit_str.split(',')))]
@@ -936,7 +942,7 @@ def Set_params(expt):
         style=style,
         layout=widgets.Layout(width='100px'),
         description='gammaB')  
-
+    
     w_is_fA = widgets.Checkbox(
         value='fA' in list_isfit,
         style=style,
@@ -948,7 +954,7 @@ def Set_params(expt):
         style=style,
         layout=widgets.Layout(width='100px'),
         description='fB')
-
+  
     w_is_fG = widgets.Checkbox(
         value='fG' in list_isfit,
         style=style,
@@ -1022,6 +1028,7 @@ def Set_params(expt):
         description='fano')
     
     # Fit params: value
+    
     w_gammaA = widgets.FloatText(
         value=gammaA,
         style=style,
@@ -1045,6 +1052,7 @@ def Set_params(expt):
         style=style,
         layout=widgets.Layout(width='200px'),
         description='fB')
+    
 
     w_fG = widgets.FloatText(
         value=fG,
@@ -1132,10 +1140,15 @@ def Set_params(expt):
     
     w_is_show_peaks = widgets.Checkbox(
         value=is_show_peaks,
-        layout=widgets.Layout(width='150px'),
+        layout=widgets.Layout(width='120px'),
         style=style,
         description='Show peaks?')       
-    
+ 
+    w_is_show_subfunctions = widgets.Checkbox(
+        value=is_show_subfunctions,
+        layout=widgets.Layout(width='170px'),
+        style=style,
+        description='Show sub-functions?')    
 
     
     button_extract = widgets.Button(description="Extract the scan",layout=widgets.Layout(width='500px'))
@@ -1159,7 +1172,8 @@ def Set_params(expt):
 
     print("-"*100)
     display(widgets.HBox([w_gain, w_eV0, w_delimiter, w_fitstuck_limit, w_min_strength]))
-    display(widgets.HBox([w_is_ipysheet, w_is_fast, w_is_transmitted, w_is_peaks_on_sum, w_is_show_peaks]))
+    display(widgets.HBox([w_is_ipysheet, w_is_fast,
+                          w_is_transmitted, w_is_peaks_on_sum, w_is_show_peaks, w_is_show_subfunctions]))
 
     display(widgets.HBox([button_extract]))
     
@@ -1757,7 +1771,7 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
         dparams = {}
         for name in dparams_list:
             dparams[name[:-5]] = dparams_list[name][n]
-        spectrum_fit = AF.Fcn_spectrum(dparams, groups, eV)
+        spectrum_fit, gau_tot, she_tot, tail_tot, baseline = AF.Fcn_spectrum(dparams, groups, eV)
 
     else:
         for group in groups:
@@ -1801,7 +1815,7 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
                     ax1.axvline(x = position,  color = color, linestyle = linestyle, label = '')
                 
     ax1.plot(eV, spectrum, 'k.')
-    if dparams_list != None: ax1.plot(eV, spectrum_fit, 'r-')
+    if dparams_list != None: ax1.plot(eV, spectrum_fit, 'r-', linewidth = 2)
     if expt.is_show_peaks:  ax1.legend()
     plt.setp(ax1.get_xticklabels(), visible=False)
     for item in ([ax1.xaxis.label, ax1.yaxis.label] +
@@ -1826,9 +1840,13 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
     
     ax2.plot(eV, spectrum, 'k.')
     if dparams_list != None:
-        ax2.plot(eV, spectrum_fit, 'r-')
-        #ax2.plot(eV, sl_list[n]*eV+ct_list[n], 'b-', label = 'Linear background')
-        #ax2.legend(loc = 1)
+        ax2.plot(eV, spectrum_fit, 'r-', linewidth = 2)
+        if expt.is_show_subfunctions:
+            ax2.plot(eV,gau_tot, 'm--', label = 'Gaussian')
+            ax2.plot(eV,she_tot, 'g-',label = 'Step')
+            ax2.plot(eV,tail_tot, 'b-', label = 'Low energy tail')
+            ax2.plot(eV,baseline, 'k-',label = 'Continuum')
+            ax2.legend(loc = 0)
     ax2.set_ylim(bottom = 1)
     ax2.set_yscale('log')
     yticks = ax1.yaxis.get_major_ticks()
@@ -1884,7 +1902,7 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
             plt.gca().set_title(title)
 
             plt.plot(eV_zoom, spectrum_zoom, 'k.')
-            if dparams_list != None: plt.plot(eV_zoom, spectrum_fit_zoom, 'r-')
+            if dparams_list != None: plt.plot(eV_zoom, spectrum_fit_zoom, 'r-', linewidth = 2)
             plt.xlabel('E (eV)')
 
             # Plot each line in the zoom
@@ -1910,7 +1928,7 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
     if count%2==1: 
         plt.subplot(122).axis('off')
         plt.show()  
-            
+        
 
 def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False):
     """
@@ -1937,6 +1955,7 @@ def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False
             
             fig, ax = plt.subplots(figsize=(15,4))
             ax.yaxis.set_major_formatter(FormatStrFormatter('%g'))
+            
 
             # To group elem on the same plot
             for group_tmp in groups:
@@ -1944,7 +1963,7 @@ def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False
                     list_lines_str = '['+' '.join([p.name for p in group_tmp.peaks])+']'
                     plt.plot(scans, group_tmp.area_list, '.-', label = 'Area %s %s'%(group_tmp.elem_name,list_lines_str))
 
-            plt.legend()
+            plt.legend(loc = 'upper right')
             if is_save: plt.savefig(expt.working_dir+expt.id+'/area_'+group.elem_name+'.png')
             if spectrum_index!=None: plt.axvline(x = spectrum_index, linestyle = '--', color = 'black')
             if is_title: 
@@ -1952,6 +1971,8 @@ def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False
                 ax.title.set_fontsize(18)
                 ax.title.set_fontweight('bold')            
                 is_title = False
+            
+            ax.set_ylim(bottom=ax.get_ylim()[0]*0.7, top=ax.get_ylim()[1]*1.3) 
             plt.show()
 
     # Plot positions & save plots
@@ -2003,6 +2024,7 @@ def Choose_spectrum_to_plot(expt):
         Display_panel(expt)
         
         expt.is_show_peaks = w_is_show_peaks.value
+        expt.is_show_subfunctions = w_is_show_subfunctions.value
         
         code = 'FF.Load_results(expt, spectrum_index='+str(w_index.value)+')'
         Create_cell(code=code, position='below', celltype='code', is_print=True, is_execute=True)
@@ -2015,8 +2037,9 @@ def Choose_spectrum_to_plot(expt):
         Display_panel(expt)
         
         expt.is_show_peaks = w_is_show_peaks.value
+        expt.is_show_subfunctions = w_is_show_subfunctions.value
         
-        display(widgets.HBox([w_index, w_is_show_peaks, button_display]))        
+        display(widgets.HBox([w_index, w_is_show_peaks, w_is_show_subfunctions, button_display]))        
         display(button_add)
         
         # Plot the spectrum and fit
@@ -2031,12 +2054,18 @@ def Choose_spectrum_to_plot(expt):
                               description='Show peaks?',
                               value=expt.is_show_peaks,
                               style=style,
-                              layout=widgets.Layout(width='150px'))
+                              layout=widgets.Layout(width='120px'))
+    
+    w_is_show_subfunctions = widgets.Checkbox(
+                          description='Show sub-functions?',
+                          value=expt.is_show_subfunctions,
+                          style=style,
+                          layout=widgets.Layout(width='170px'))
     
     button_display = widgets.Button(description="Preview the selected plot",layout=widgets.Layout(width='300px'))
     button_display.on_click(on_button_display_clicked)
     
-    display(widgets.HBox([w_index, w_is_show_peaks, button_display]))        
+    display(widgets.HBox([w_index, w_is_show_peaks, w_is_show_subfunctions, button_display]))        
         
     button_add = widgets.Button(description="Add the selected plot",layout=widgets.Layout(width='300px'))
     button_add.on_click(on_button_add_clicked)
@@ -2053,7 +2082,9 @@ def Load_results(expt, spectrum_index=0):
                     'sfa0_list','sfa1_list','tfb0_list','tfb1_list',
                     'twc0_list','twc1_list',
                     'noise_list','fano_list', 'epsilon_list',
-                    'fG_list','fA_list','fB_list','gammaA_list','gammaB_list'}
+                    'fG_list'
+                    ,'fA_list','fB_list','gammaA_list','gammaB_list'
+                    }
 
     # Init all the lists
     dparams_list = dict.fromkeys(dparams_list, np.array([]))
@@ -2097,8 +2128,7 @@ def Load_results(expt, spectrum_index=0):
           "; tfb0 = %g"%expt.tfb0+"; tfb1 = %g"%expt.tfb1)
     print("twc0 = %g"%expt.twc0+"; twc1 = %g"%expt.twc1)
     print("fG = %g"%expt.fG)
-    print("fA = %g"%expt.fA+"; fB = %g"%expt.fB+
-          "; gammaA = %g"%expt.gammaA+"; gammaB = %g"%expt.gammaB)
+    print("fA = %g"%expt.fA+"; fB = %g"%expt.fB+"; gammaA = %g"%expt.gammaA+"; gammaB = %g"%expt.gammaB)
     print("")
     
         

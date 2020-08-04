@@ -21,7 +21,7 @@ from IPython.display import clear_output
 
 
 
-__version__="0.5"
+__version__="0.6"
 
 """
 Here are defined the functions for analysis.
@@ -61,7 +61,8 @@ def Fit_spectrums(expt, is_save=True):
                      'fA':expt.fA,
                      'fB':expt.fB,
                      'gammaA':expt.gammaA,
-                     'gammaB':expt.gammaB}
+                     'gammaB':expt.gammaB
+                     }
     expt.dparams_fit=dparams_fit
 
     # Dictionnary with a list for each parameter updated at each fit
@@ -69,7 +70,9 @@ def Fit_spectrums(expt, is_save=True):
                     'sfa0_list','sfa1_list','tfb0_list','tfb1_list',
                     'twc0_list','twc1_list',
                     'noise_list','fano_list', 'epsilon_list',
-                    'fG_list','fA_list','fB_list','gammaA_list','gammaB_list'}
+                    'fG_list'
+                    ,'fA_list','fB_list','gammaA_list','gammaB_list'
+                    }
 
     # Init all the lists
     dparams_list = dict.fromkeys(dparams_list, np.array([]))
@@ -156,7 +159,7 @@ def Fit_spectrums(expt, is_save=True):
                     if group.elem_name == 'Compton':
                         spectrum_group += Fcn_compton_peak(position,intensity_rel,eV,dparams_0)
                     else:
-                        spectrum_group += Fcn_peak(position,intensity_rel,eV,dparams_0)
+                        spectrum_group += Fcn_peak(position,intensity_rel,eV,dparams_0)[0]
             a.append(spectrum_group)
         a = np.transpose(a)
         b = spectrum
@@ -191,19 +194,19 @@ def Fit_spectrums(expt, is_save=True):
         dparams_lm.add('sl', value=dparams_0['sl'])
         dparams_lm.add('ct', value=dparams_0['ct'])
         dparams_lm.add('sfa0', value=dparams_0['sfa0'])
-        dparams_lm.add('sfa1', value=dparams_0['sfa1'], min = 0.)
+        dparams_lm.add('sfa1', value=dparams_0['sfa1'])
         dparams_lm.add('tfb0', value=dparams_0['tfb0'])
-        dparams_lm.add('tfb1', value=dparams_0['tfb1'], min = 0.)
-        dparams_lm.add('twc0', value=dparams_0['twc0'], min = 0.1, max = 0.7)
-        dparams_lm.add('twc1', value=dparams_0['twc1'], min = 0., max = 0.5)
+        dparams_lm.add('tfb1', value=dparams_0['tfb1'])
+        dparams_lm.add('twc0', value=dparams_0['twc0'])
+        dparams_lm.add('twc1', value=dparams_0['twc1'])
         dparams_lm.add('noise', value=dparams_0['noise'])
         dparams_lm.add('fano', value=dparams_0['fano'])
         dparams_lm.add('epsilon', value=dparams_0['epsilon'])
         dparams_lm.add('fG', value=dparams_0['fG'], min = 0.)
-        dparams_lm.add('fA', value=dparams_0['fA'], min = 0.)
-        dparams_lm.add('fB', value=dparams_0['fB'], min = 0.)
-        dparams_lm.add('gammaA', value=dparams_0['gammaA'], min = 0.)
-        dparams_lm.add('gammaB', value=dparams_0['gammaB'], min = 0.)
+        dparams_lm.add('fA', value=dparams_0['fA'], min = 0., max = 2.)
+        dparams_lm.add('fB', value=dparams_0['fB'], min = 0., max = 2.)
+        dparams_lm.add('gammaA', value=dparams_0['gammaA'], min = 0., max = 10.)
+        dparams_lm.add('gammaB', value=dparams_0['gammaB'], min = 0., max = 10.)
 
         # Check in list_isfit which peak params should be fitted
         # By default vary = True in dparams_lm.add
@@ -268,7 +271,7 @@ def Fit_spectrums(expt, is_save=True):
         dparams = {}
         for name in dparams_list:
             dparams[name[:-5]] = dparams_list[name][-1]
-        spectrum_fit = Fcn_spectrum(dparams, groups, eV)
+        spectrum_fit, gau_tot, she_tot, tail_tot, baseline, compton = Fcn_spectrum(dparams, groups, eV)
 
         clear_output(wait=True) # This line sets the refreshing
         fig = plt.figure(figsize=(15,10))
@@ -289,8 +292,7 @@ def Fit_spectrums(expt, is_save=True):
         """
         
         ax1.plot(eV, spectrum, 'k.')
-        ax1.plot(eV, spectrum_fit, 'r-', label = 'Fit')
-        #ax1.plot(eV, dparams['sl']*eV+dparams['ct'], 'b-', label = 'Linear background')
+        ax1.plot(eV, spectrum_fit, 'r-', label = 'Fit', linewidth = 2)
         ax1.legend()
         plt.setp(ax1.get_xticklabels(), visible=False)
 
@@ -306,9 +308,15 @@ def Fit_spectrums(expt, is_save=True):
         """
         
         ax2.plot(eV, spectrum, 'k.')
-        ax2.plot(eV, spectrum_fit, 'r-')
-        #ax2.plot(eV, dparams['sl']*eV+dparams['ct'], 'b-')
-        #ax2.legend(loc = 1)
+        ax2.plot(eV, spectrum_fit, 'r-', linewidth = 2)
+        
+        if expt.is_show_subfunctions:
+            ax2.plot(eV,gau_tot, 'm--', label = 'Gaussian')
+            ax2.plot(eV,she_tot, 'g-',label = 'Step')
+            ax2.plot(eV,tail_tot, 'b-', label = 'Low energy tail')
+            ax2.plot(eV,baseline, 'k-',label = 'Continuum')
+            ax2.plot(eV,compton, color = 'grey', linestyle = '-',label = 'Compton')
+            ax2.legend(loc = 0)
         ax2.set_ylim(1,1e6)
         ax2.set_yscale('log')
         yticks = ax1.yaxis.get_major_ticks()
@@ -385,7 +393,7 @@ def Fcn2min(dparams, groups, eV, data):
         for peak in group.peaks:
             peak.position = float(dparams['pos_'+group.name+'_'+peak.name])
 
-    model = Fcn_spectrum(dparams, groups, eV)
+    model = Fcn_spectrum(dparams, groups, eV)[0]
 
     return model - data
 
@@ -400,33 +408,67 @@ def Fcn_spectrum(dparams, groups, eV):
     sl = dparams['sl']
     noise = dparams['noise']
 
+    # The total fit for the whole spectrum
     spectrum_tot = 0.
+    # The different parts composing the fit (for control)
+    gau_tot = 0.
+    she_tot = 0.
+    tail_tot = 0.
+    compton = 0.
     for group in groups:
+        # The total fit for the group of peaks
         spectrum_group = 0.
+        # The different parts composing the fit (for control)
+        gau_group = 0.
+        she_group = 0.
+        tail_group = 0.   
         area = group.area
         for peak in group.peaks:
             position = peak.position
             intensity_rel = peak.intensity_rel
             if group.elem_name == 'Compton':
-                spectrum_group += area*Fcn_compton_peak(position,intensity_rel,eV,dparams)
+                #ppic, gau, she, tail = Fcn_compton_peak(position,intensity_rel,eV,dparams)
+                
+                #spectrum_group += area*ppic
+                compton = area*Fcn_compton_peak(position,intensity_rel,eV,dparams)
+                spectrum_group += compton
+                #gau_group += area*gau
+                #she_group += area*she
+                #tail_group += area*tail
             else:
-                spectrum_group += area*Fcn_peak(position,intensity_rel,eV,dparams)
+                ppic, gau, she, tail = Fcn_peak(position,intensity_rel,eV,dparams)
+                spectrum_group += area*ppic
+                gau_group += area*gau
+                she_group += area*she
+                tail_group += area*tail
+                compton += ppic*0.
+                
         spectrum_tot += spectrum_group
+        gau_tot += gau_group
+        she_tot += she_group
+        tail_tot += tail_group
 
+    
+    # Uncomment to cut the baseline at the end of the elastic peak
+    # Do not forget to comment the line baseline = ct+sl*eV
+    
     # We add a linear baseline, which cannot be < 0, and stops after the elastic peak (if there is one)
     limit_baseline = eV[-1]
     for group in groups:
         if group.elem_name == 'Elastic':
             for peak in group.peaks:
                 if peak.name == 'El':
-                    limit_baseline = peak.position
-
-    eV_tmp = np.where(eV<limit_baseline+noise, eV, 0.)
+                    limit_baseline = peak.position                
+    eV_tmp = np.where(eV<limit_baseline+1000*noise, eV, 0.)
     baseline = ct+sl*eV_tmp
+    
+    
+    #baseline = ct+sl*eV
     baseline = np.where(baseline>0.,baseline,0.)
     spectrum_tot+= baseline
 
-    return spectrum_tot
+    return spectrum_tot, gau_tot, she_tot, tail_tot, baseline, compton
+
 
 def Interpolate_scf(atom, energy):
     """
@@ -507,17 +549,91 @@ def Fcn_peak(pos, amp, eV, dparams):
     arg = (keV-pos_keV)**2./(2.*wid**2.)
     farg = (keV-pos_keV)/wid
     gau = amp/(np.sqrt(2.*np.pi)*wid)*np.exp(-arg)
+    # Avoid numerical instabilities
+    gau = np.where(gau>1e-10,gau, 0.)
 
     # Function shelf S(i, Ejk)
     she = amp/(2.*pos_keV)*erfc(farg/np.sqrt(2.))
+    # Avoid numerical instabilities
+    she = np.where(she>1e-10,she, 0.)
 
     # Function tail T(i, Ejk)
     tail = amp/(2.*wid*TW)*np.exp(farg/TW+1/(2*TW**2))*erfc(farg/np.sqrt(2.)+1./(np.sqrt(2.)*TW))
+    # Avoid numerical instabilities
+    tail = np.where(tail>1e-10,tail, 0.)
 
     # Function Peak
     ppic = np.array(gau+SF*she+TF*tail)
 
-    return ppic
+    return ppic, np.array(gau), np.array(SF*she), np.array(TF*tail)
+
+
+def Fcn_compton_peak_test(pos, amp, eV, dparams):
+    """
+    Definition of the compton peak (area normalised to 1).
+    Defined here as a regular peak, but with a larger width.
+    """
+
+    sfa0 = dparams['sfa0']
+    sfa1 = dparams['sfa1']
+    tfb0 = dparams['tfb0']
+    tfb1 = dparams['tfb1']
+    twc0 = dparams['twc0']
+    twc1 = dparams['twc1']
+    noise = dparams['noise']
+    fano = dparams['fano']
+    epsilon = dparams['epsilon']
+    fG = dparams['fG']
+
+    # We work in keV for the peak definition
+    pos_keV = pos/1000.
+    keV = eV/1000.
+
+    # Peak width after correction from detector resolution (sigmajk)
+    # With a factor fG for the Compton peak
+    wid = fG*np.sqrt((noise/2.3548)**2.+epsilon*fano*pos_keV)
+
+    # Tail width (cannot be <0)
+    TW = twc0 + twc1*pos_keV
+    TW = np.where(TW>0.,TW,0.)
+
+    # Energy dependent attenuation by Si in the detector
+    atwe_Si = 28.086 #atomic weight in g/mol
+    rad_el = 2.815e-15 #radius electron in m
+    Na = 6.02e23 # in mol-1
+    llambda = 12398./pos*1e-10 # in m
+    # mass attenuation coefficient of Si in cm^2/g
+    musi = 2.*llambda*rad_el*Na*1e4*float(Interpolate_scf('si',pos)[1])/atwe_Si
+
+    # Shelf fraction SF (cannot be <0)
+    SF = (sfa0 + sfa1*pos_keV)*musi
+    SF = np.where(SF>0.,SF,0.)
+    
+    # Tail fraction TF (cannot be <0)
+    TF = tfb0 + tfb1*musi
+    TF = np.where(TF>0.,TF,0.)
+
+    # Definition of gaussian
+    arg = (keV-pos_keV)**2./(2.*wid**2.)
+    farg = (keV-pos_keV)/wid
+    gau = amp/(np.sqrt(2.*np.pi)*wid)*np.exp(-arg)
+    # Avoid numerical instabilities
+    gau = np.where(gau>1e-10,gau, 0.)
+
+    # Function shelf S(i, Ejk)
+    she = amp/(2.*pos_keV)*erfc(farg/np.sqrt(2.))
+    # Avoid numerical instabilities
+    she = np.where(she>1e-10,she, 0.)
+
+    # Function tail T(i, Ejk)
+    tail = amp/(2.*wid*TW)*np.exp(farg/TW+1/(2*TW**2))*erfc(farg/np.sqrt(2.)+1./(np.sqrt(2.)*TW))
+    # Avoid numerical instabilities
+    tail = np.where(tail>1e-10,tail, 0.)
+
+    # Function Peak
+    ppic = np.array(gau+SF*she+TF*tail)
+
+    return ppic, np.array(gau), np.array(SF*she), np.array(TF*tail)
 
 def Fcn_compton_peak(pos, amp, eV, dparams):
     """
@@ -525,14 +641,10 @@ def Fcn_compton_peak(pos, amp, eV, dparams):
     “Description of Compton peaks in energy-dispersive  x-ray fluorescence spectra”,
     X-Ray Spectrometry 32 (2003), 139–147
     The params for peak definition should be passed as a dictionnary :
-    dparams = {'fG': 0.01, 'fA':2., ... }
+    dparams = {'fG': 0.01, 'fA':2., ...}
     """
 
     fG = dparams['fG']
-    fA = dparams['fA']
-    fB = dparams['fB']
-    gammaA = dparams['gammaA']
-    gammaB = dparams['gammaB']
     noise = dparams['noise']
     fano = dparams['fano']
     epsilon = dparams['epsilon']
@@ -547,6 +659,11 @@ def Fcn_compton_peak(pos, amp, eV, dparams):
     # Definition of gaussian
     arg = (keV-pos_keV)**2./(2.*(fG*wid)**2.)
     gau = amp/(np.sqrt(2.*np.pi)*fG*wid)*np.exp(-arg)
+  
+    fA = dparams['fA']
+    fB = dparams['fB']
+    gammaA = dparams['gammaA']
+    gammaB = dparams['gammaB']
 
     #Low energy tail TA
     farg = (keV-pos_keV)/wid
@@ -556,5 +673,8 @@ def Fcn_compton_peak(pos, amp, eV, dparams):
     TB = amp/(2.*wid*gammaB)*np.exp(-farg/gammaB+1/(2*gammaB**2))*erfc(-farg/np.sqrt(2.)+1./(np.sqrt(2.)*gammaB))
 
     ppic = np.array(gau+fA*TA+fB*TB)
-
+    
+    # Avoid numerical instabilities
+    ppic = np.where(ppic>1e-10,ppic, 0.)
+    
     return ppic
