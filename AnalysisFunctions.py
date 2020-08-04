@@ -194,11 +194,11 @@ def Fit_spectrums(expt, is_save=True):
         dparams_lm.add('sl', value=dparams_0['sl'])
         dparams_lm.add('ct', value=dparams_0['ct'])
         dparams_lm.add('sfa0', value=dparams_0['sfa0'])
-        dparams_lm.add('sfa1', value=dparams_0['sfa1'])
+        dparams_lm.add('sfa1', value=dparams_0['sfa1'], min = 0.)
         dparams_lm.add('tfb0', value=dparams_0['tfb0'])
-        dparams_lm.add('tfb1', value=dparams_0['tfb1'])
+        dparams_lm.add('tfb1', value=dparams_0['tfb1'], min = 0.)
         dparams_lm.add('twc0', value=dparams_0['twc0'])
-        dparams_lm.add('twc1', value=dparams_0['twc1'])
+        dparams_lm.add('twc1', value=dparams_0['twc1'], min = 0.)
         dparams_lm.add('noise', value=dparams_0['noise'])
         dparams_lm.add('fano', value=dparams_0['fano'])
         dparams_lm.add('epsilon', value=dparams_0['epsilon'])
@@ -567,73 +567,6 @@ def Fcn_peak(pos, amp, eV, dparams):
 
     return ppic, np.array(gau), np.array(SF*she), np.array(TF*tail)
 
-
-def Fcn_compton_peak_test(pos, amp, eV, dparams):
-    """
-    Definition of the compton peak (area normalised to 1).
-    Defined here as a regular peak, but with a larger width.
-    """
-
-    sfa0 = dparams['sfa0']
-    sfa1 = dparams['sfa1']
-    tfb0 = dparams['tfb0']
-    tfb1 = dparams['tfb1']
-    twc0 = dparams['twc0']
-    twc1 = dparams['twc1']
-    noise = dparams['noise']
-    fano = dparams['fano']
-    epsilon = dparams['epsilon']
-    fG = dparams['fG']
-
-    # We work in keV for the peak definition
-    pos_keV = pos/1000.
-    keV = eV/1000.
-
-    # Peak width after correction from detector resolution (sigmajk)
-    # With a factor fG for the Compton peak
-    wid = fG*np.sqrt((noise/2.3548)**2.+epsilon*fano*pos_keV)
-
-    # Tail width (cannot be <0)
-    TW = twc0 + twc1*pos_keV
-    TW = np.where(TW>0.,TW,0.)
-
-    # Energy dependent attenuation by Si in the detector
-    atwe_Si = 28.086 #atomic weight in g/mol
-    rad_el = 2.815e-15 #radius electron in m
-    Na = 6.02e23 # in mol-1
-    llambda = 12398./pos*1e-10 # in m
-    # mass attenuation coefficient of Si in cm^2/g
-    musi = 2.*llambda*rad_el*Na*1e4*float(Interpolate_scf('si',pos)[1])/atwe_Si
-
-    # Shelf fraction SF (cannot be <0)
-    SF = (sfa0 + sfa1*pos_keV)*musi
-    SF = np.where(SF>0.,SF,0.)
-    
-    # Tail fraction TF (cannot be <0)
-    TF = tfb0 + tfb1*musi
-    TF = np.where(TF>0.,TF,0.)
-
-    # Definition of gaussian
-    arg = (keV-pos_keV)**2./(2.*wid**2.)
-    farg = (keV-pos_keV)/wid
-    gau = amp/(np.sqrt(2.*np.pi)*wid)*np.exp(-arg)
-    # Avoid numerical instabilities
-    gau = np.where(gau>1e-10,gau, 0.)
-
-    # Function shelf S(i, Ejk)
-    she = amp/(2.*pos_keV)*erfc(farg/np.sqrt(2.))
-    # Avoid numerical instabilities
-    she = np.where(she>1e-10,she, 0.)
-
-    # Function tail T(i, Ejk)
-    tail = amp/(2.*wid*TW)*np.exp(farg/TW+1/(2*TW**2))*erfc(farg/np.sqrt(2.)+1./(np.sqrt(2.)*TW))
-    # Avoid numerical instabilities
-    tail = np.where(tail>1e-10,tail, 0.)
-
-    # Function Peak
-    ppic = np.array(gau+SF*she+TF*tail)
-
-    return ppic, np.array(gau), np.array(SF*she), np.array(TF*tail)
 
 def Fcn_compton_peak(pos, amp, eV, dparams):
     """

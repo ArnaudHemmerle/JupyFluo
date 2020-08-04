@@ -1771,7 +1771,7 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
         dparams = {}
         for name in dparams_list:
             dparams[name[:-5]] = dparams_list[name][n]
-        spectrum_fit, gau_tot, she_tot, tail_tot, baseline = AF.Fcn_spectrum(dparams, groups, eV)
+        spectrum_fit, gau_tot, she_tot, tail_tot, baseline, compton = AF.Fcn_spectrum(dparams, groups, eV)
 
     else:
         for group in groups:
