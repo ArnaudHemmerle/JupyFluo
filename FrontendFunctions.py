@@ -435,7 +435,7 @@ def Display_panel(expt):
                       expt.fG = np.nanmean(expt.dparams_list[name])   
                         
                   if name[:-5] == 'fA':
-                      expt.f1 = np.nanmean(expt.dparams_list[name]) 
+                      expt.fA = np.nanmean(expt.dparams_list[name]) 
                         
                   if name[:-5] == 'fB':
                       expt.fB = np.nanmean(expt.dparams_list[name])            
