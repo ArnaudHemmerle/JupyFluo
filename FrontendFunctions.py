@@ -595,7 +595,7 @@ def Display_panel(expt):
         if expt.is_fit_done:
             display(widgets.HBox([button_start_fit, button_add_plot, button_extract_mean]))
         else:
-            display(button_start_fit)
+            display(widgets.HBox([button_start_fit,  button_add_plot]))
         
         print(100*"-")      
     
@@ -1235,7 +1235,7 @@ def Extract_nexus(expt):
     
     # Extract timestamps
     for i in range(len(stamps)):
-        if (stamps[i][1]== None and stamps[i][0]=='sensorsRelTimestamps'):
+        if (stamps[i][1]== None and stamps[i][0] in ['sensorsRelTimestamps', 'sensors_rel_timestamps']):
             expt.allsensorsRelTimestamps = data[i]    
     
     # Get the chosen fluospectrums        
@@ -1846,6 +1846,7 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
             ax2.plot(eV,she_tot, 'g-',label = 'Step')
             ax2.plot(eV,tail_tot, 'b-', label = 'Low energy tail')
             ax2.plot(eV,baseline, 'k-',label = 'Continuum')
+            ax2.plot(eV,compton, color = 'grey', linestyle = '-',label = 'Compton')
             ax2.legend(loc = 0)
     ax2.set_ylim(bottom = 1)
     ax2.set_yscale('log')
@@ -1941,8 +1942,6 @@ def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False
 
     scans = np.arange(np.shape(spectrums)[0])
     
-
-
     
     # Plot areas & save plots
     is_title = True
@@ -1963,16 +1962,18 @@ def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False
                     list_lines_str = '['+' '.join([p.name for p in group_tmp.peaks])+']'
                     plt.plot(scans, group_tmp.area_list, '.-', label = 'Area %s %s'%(group_tmp.elem_name,list_lines_str))
 
-            plt.legend(loc = 'upper right')
+            plt.legend(bbox_to_anchor=(0,1.02,1,0.2),loc = 'lower left',ncol = 5)
+            plt.tight_layout()
+            
             if is_save: plt.savefig(expt.working_dir+expt.id+'/area_'+group.elem_name+'.png')
             if spectrum_index!=None: plt.axvline(x = spectrum_index, linestyle = '--', color = 'black')
             if is_title: 
-                ax.set_title('AREAS\n')
+                ax.set_title('AREAS\n\n')
                 ax.title.set_fontsize(18)
                 ax.title.set_fontweight('bold')            
                 is_title = False
             
-            ax.set_ylim(bottom=ax.get_ylim()[0]*0.7, top=ax.get_ylim()[1]*1.3) 
+            #ax.set_ylim(bottom=ax.get_ylim()[0]*0.7, top=ax.get_ylim()[1]*1.3) 
             plt.show()
 
     # Plot positions & save plots
@@ -1986,7 +1987,7 @@ def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False
                 plt.legend()
                 if is_save: plt.savefig(expt.working_dir+expt.id+'/position_'+group.elem_name+'_'+peak.name+'.png')
                 if is_title:
-                    ax.set_title('POSITIONS\n')
+                    ax.set_title('POSITIONS\n\n')
                     ax.title.set_fontsize(18)
                     ax.title.set_fontweight('bold')
                     is_title = False
@@ -2004,7 +2005,7 @@ def Plot_fit_results(expt, spectrum_index=None, dparams_list=None, is_save=False
             plt.legend()
             if is_save: plt.savefig(expt.working_dir+expt.id+'/'+str(name[:-5])+'.png')
             if is_title:
-                ax.set_title('OTHER PARAMETERS\n')
+                ax.set_title('OTHER PARAMETERS\n\n')
                 ax.title.set_fontsize(18)
                 ax.title.set_fontweight('bold')                
                 is_title = False

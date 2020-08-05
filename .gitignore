@@ -4,5 +4,4 @@ working/*
 .ipynb_checkpoints/
 __pycache__/
 JupyFluo.pdf
-Untitled.ipynb
-Sans*
+not_in_git/
