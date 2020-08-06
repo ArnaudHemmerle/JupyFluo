@@ -31,7 +31,7 @@ try:
 except:
     print('Careful: the module xraylib is not installed!')
 
-__version__="0.12"
+__version__="0.9"
 
 """
 -Here are defined all the functions relevant to the front end of JupyFluo,
@@ -1247,7 +1247,7 @@ def Extract_nexus(expt):
 
     # Extract timestamps
     for i in range(len(stamps)):
-        if (stamps[i][1]== None and stamps[i][0]=='sensorsRelTimestamps'):
+        if (stamps[i][1]== None and stamps[i][0] in ['sensorsRelTimestamps', 'sensors_rel_timestamps']):
             expt.allsensorsRelTimestamps = data[i]
 
     # Get the chosen fluospectrums
@@ -1511,6 +1511,7 @@ def Set_peaks(expt):
                     if group_chosen == 'M':
                         ind_min = -219
                         ind_max = -113
+                    
                     for i in range(ind_min,ind_max):
 
                         Z = xraylib.SymbolToAtomicNumber(atom_chosen)
@@ -1526,9 +1527,10 @@ def Set_peaks(expt):
                                             '{:.1f}'.format(energy),
                                             '{:f}'.format(strength),'no','yes'])
                                 print('Line name: %s, energy (eV): %g, strength: %g'%(line_names[-i-1], energy, strength))
+                                is_line_to_print = True
                         except:
                             pass
-
+                    
 
                     def on_button_add_group_clicked(b):
                         """
@@ -1849,6 +1851,7 @@ def Plot_spectrum(expt, spectrum_index=0, dparams_list=None):
             ax2.plot(eV,she_tot, 'g-',label = 'Step')
             ax2.plot(eV,tail_tot, 'b-', label = 'Low energy tail')
             ax2.plot(eV,baseline, 'k-',label = 'Continuum')
+            ax2.plot(eV,compton, color = 'grey', linestyle = '-',label = 'Compton')
             ax2.legend(loc = 0)
     ax2.set_ylim(bottom = 1)
     ax2.set_yscale('log')

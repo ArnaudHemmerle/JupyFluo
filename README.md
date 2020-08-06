@@ -4,7 +4,7 @@ JupyFluo is a Jupyter Notebook to analyze X-Ray Fluorescence (XRF) experiments o
 The notebook should be first set up by an Expert following the instructions in the "Expert" section. User can then follow the guidelines in the "User" section to start using the notebook. Please note that the notebook is currently in development. As such, be skeptical about any unexpected results.  Any feedback on the notebook or the code is welcome.
 
 ## Last versions of modules:
-FrontendFunctions.py: 0.8  
+FrontendFunctions.py: 0.9  
 AnalysisFunctions.py: 0.11
 
 ## User
@@ -34,7 +34,7 @@ AnalysisFunctions.py: 0.11
 7. Put first, for example, ```First Spectrum=0``` and ```Last Spectrum=1```. Click on ```Extract the scan``` at the bottom of the panel.
 
 
-8. Use the top figure to choose your subset of spectrums. Do not choose an empty spectrum for the first spectrum (and try to have at least the first 10 spectrums not empty). 
+8. Use the top figure to choose your subset of spectrums. 
 
 9. Click again on ```Set params``` to update the parameters ```First Spectrum``` and ```Last Spectrum``` with your choice. Click again on ```Extract the scan```.
 
@@ -43,21 +43,25 @@ AnalysisFunctions.py: 0.11
 ### Choose the peaks
 1. Click on ```Set peaks```.  
 
-2. A few peaks are already displayed (typically the Rayleigh and Compton peaks). Check their energy.
+2. A few peaks are already displayed (typically the Rayleigh and Compton peaks). Check their energies.
 
 3. Use the tool ```Add peaks from database``` below the sheet to import new peaks.
 
-4. Modify the sheet to remove peaks or change their parameters. You can leave a peak in the list and do not include it in the analysis by writting ```no``` in the column ```#Fit Peak?```. **The strength is here relative to the most intense peak from the same atom and same initial level (L1, K, L3 ...)**
+4. Modify the sheet to remove peaks or change their parameters. You can leave a peak in the list and do not include it in the analysis by writting ```no``` in the column ```#Fit Peak?```. 
 
-5. Keep the peak/line names ```Elastic/El``` and ```Compton/Co```for the elastic (Rayleigh) and Compton peaks. You can add a Compton peak for an element by naming it ```Compton``` as well, and precise the element in the line column. For example, if you want to add a Compton peak for the Au La1 line, name the peak ```Compton``` and the line ```CoAuLa1```.
+5. **The strength of a line is its X-ray fluorescence production cross section with full cascade (in cm^2/g).** It is extracted from the database but can be obtained here as well http://lvserver.ugent.be/xraylib-web/.
 
-6. You can use the plot below the sheet to find where the peaks are. The plots are not updated in real time, you need to follow the next points to update the plots.
+6. Keep the peak/line names ```Elastic/El``` and ```Compton/Co```for the elastic (Rayleigh) and Compton peaks. You can add a Compton peak for an element by naming it ```Compton``` as well, and adding the element in the line column. For example, if you want to add a Compton peak for the Au La1 line, name the peak ```Compton``` and the line ```CoAuLa1```.
 
-7. When you think you are done with the peaks, validate the sheet by clicking on ```Update Peaks``` below it.
+7. If you add an escape peak, do not name it with the name of its corresponding element! For example, if you add the escape peak of Au La1, name it 'EscAuLa1', name the line 'Esc', and put a strength of 1.
 
-8. A summary of your peaks appear. Modify them or click on ```Start Fit``` to start the fit.
+8. You can use the plot below the sheet to find where the peaks are. The plots are not updated in real time, you need to follow the next points to update the plots.
 
-9. Note: You can also directly edit the Excel file ```Peaks.csv``` in your folder ```working_directory/filename/``` if you prefer.
+9. When you think you are done with the peaks, validate the sheet by clicking on ```Update Peaks``` below it.
+
+10. A summary of your peaks appear. Modify them or click on ```Start Fit``` to start the fit.
+
+11. Note: You can also directly edit the Excel file ```Peaks.csv``` in your folder ```working_directory/filename/``` if you prefer.
  
 
 ### Fit the spectrums
@@ -82,9 +86,8 @@ Once the fit is done, the fitted parameters will be displayed and saved as png i
 5. Click on ```Export to pdf``` in the panel to generate the PDF, or ```Analyze a new scan``` to continue with the next scan. 
 
 ### Tips
-1. If a peak position or area seems to be noisy, try switching off/on fitting its peak position.
 
-2. To save the widget state (everything written in the panels), click in the menu Widgets/Save Notebook Widget State. Careful, the size of the notebook may increase dramatically when saving the widgets. **Careful, if you do not save the widget state and close the notebook, the panels will not be back when you open it again.**  
+To save the widget state (everything written in the panels), click in the menu Widgets/Save Notebook Widget State. Careful, the size of the notebook may increase dramatically when saving the widgets. **Careful, if you do not save the widget state and close the notebook, the panels will not be back when you open it again.**  
 
 ## Expert
 <!-- [![image](https://imgur.com/a7eXXXk.png)](https://www.youtube.com/watch?v=O-ULCnkTFYU)
@@ -103,13 +106,11 @@ Do not start from zero! Taking a previous set of parameters should directly give
 ### General parameters
 1. Click on the right fluo elements.
 
-2. Fill in ```Gain```, ```eV0```, ```Delimiter```, ```Limit iter.``` and check the checkboxes.
+2. Fill in ```Gain```, ```eV0```, ```Delimiter```, ```Limit iter.```, ```Energy```, and check the checkboxes.
 
 3. Choose a range of channels covering from the lowest peak you want to fit to the end of the elastic peak (if included).
 
-4. Keep the default values in all the other boxes.
-
-5. Extract about 10 spectrums from the file, and try to choose good ones (without any weird behaviour). 
+4. Extract about 10 spectrums from the file, and try to choose good ones (without any weird behaviour). 
 
 
 ### Peak definition
@@ -133,24 +134,24 @@ fB = 1.0e-10
 gammaB = 1.0e10
 ```
  
-2. Linear background  
+2. Linear background:  
 Put ```sl=0.```. Start by finding manually a reasonnable value for ```ct```, which should be close to the value of the background in a region without peaks.
 
-3. Step function at low energy (<8 keV)  
+3. Step function at low energy (<8 keV):  
 Adjust ```sfa0``` manually (or you can try to fit it). It will change the step function at low energy.
 
-4. Compton peak  
+4. Compton peaks:  
 - Fit only ```gammaA```, which sets the slope of the foot of the Compton peaks at low energy. When the fit is done, get the average value using the button ```Extract averages```.
 - Fit only ```fA```, which sets the transition between a linear slope to a Gaussian in the Compton foot, at low energy.
 
-5. Gaussians width  
+5. Gaussians width:  
 Fit only ```noise``` and ```fG```.
 
-6. Other parameters  
+6. Other parameters:  
 If the fit is still not good enough, you can try to fit independantly ```sl``` and ```sfa1```.
 
 ### Finishing
-1. Try to keep only ``ct``` as fitting parameters for the User (or no fit parameters). If the Compton peak varies a lot with time, add ```gammaA```.
+1. Try to keep only ```ct``` as a fitting parameters for the User (or no fit parameters at all). If the Compton peak varies a lot with time, add ```gammaA```.
 
 2. **Make the list of peaks the default one by clicking on ```Save current peaks as default``` in the control panel.**
 
@@ -162,19 +163,23 @@ If the fit is still not good enough, you can try to fit independantly ```sl``` a
 ## Description of the parameters
 
 ### References
-The spectrum function and peak definition are adapted from results in the following papers (please cite these references accordingly):
--  M. Van Gysel, P. Lemberge & P. Van Espen,
+- The spectrum function and peak definition are adapted from results in the following papers (please cite these references accordingly):
+    -  M. Van Gysel, P. Lemberge & P. Van Espen,
     “Description of Compton peaks in energy-dispersive  x-ray fluorescence spectra”,
     X-Ray Spectrometry 32 (2003), 139–147
--   M. Van Gysel, P. Lemberge & P. Van Espen, “Implementation of a spectrum fitting
+    -   M. Van Gysel, P. Lemberge & P. Van Espen, “Implementation of a spectrum fitting
     procedure using a robust peak model”, X-Ray Spectrometry 32 (2003), 434–441
-- J. Campbell & J.-X. Wang, “Improved model for the intensity of low-energy tailing in
-    Si (Li) x-ray spectra”, X-Ray Spectrometry 20 (1991), 191–197
+    - J. Campbell & J.-X. Wang, “Improved model for the intensity of low-energy tailing in
+    Si (Li) x-ray spectra”, X-Ray Spectrometry 20 (1991), 191–197  
+    
 
-See this reference as well for results using these peak/spectrum definitions:
-- F. Malloggi, S. Ben Jabrallah, L. Girard, B. Siboulet, K. Wang, P. Fontaine, and J. Daillant, "X-ray Standing Waves and Molecular Dynamics Studies of Ion Surface Interactions in Water at a Charged Silica Interface", J. Phys. Chem. C, 123 (2019), 30294–30304
+- See this reference as well for results using these peak/spectrum definitions:
+    - F. Malloggi, S. Ben Jabrallah, L. Girard, B. Siboulet, K. Wang, P. Fontaine, and J. Daillant, "X-ray Standing Waves and Molecular Dynamics Studies of Ion Surface Interactions in Water at a Charged Silica Interface", J. Phys. Chem. C, 123 (2019), 30294–30304  
+    
 
-This particular version of JupyFluo (v0.2) use the database xraydb (https://github.com/xraypy/XrayDB).
+- The  X-ray fluorescence production cross section are extracted from the database xraylib (https://github.com/tschoonj/xraylib/wiki):
+    - T. Schoonjans et al. "The xraylib library for X-ray-matter interactions. Recent developments" Spectrochimica Acta Part B: Atomic Spectroscopy 66 (2011), pp. 776-784
+(https://github.com/xraypy/XrayDB).
 
 ### Quick description of the parameters
 Here we give a quick description of each parameters and typical values. For more details, see corresponding publications and the code itself.  
@@ -187,6 +192,7 @@ Note that for synchrotron-based experiments some parameters can be significantly
 
 - ```Elements XXX```: check the box corresponding the detector elements. Typical value: ```Element 4``` for the single-element detector, ```Element 0,1,2,3``` for the four-elements detector.
 
+- ```Energy```: the beamline energy in eV, for calculating the fluorescence cross sections. 
 
 - ```sl, ct```: linear baseline ```ct+sl*eV```.
 - ```noise```: electronic noise (FWHM in keV). Typical value: ```noise=0.1```.
@@ -224,7 +230,9 @@ Note that for synchrotron-based experiments some parameters can be significantly
 
 - ```Show peaks?```: show the peaks or not in the plots.  
 
-- ```Strength min```: minimal strength to appear in the plots. Put to zero to see all the peaks.
+- ```Strength min```: minimal strength to appear in the peak database (in cm^2/g). 0.05 seems to be a reasonnable value. Put to zero to see all the peaks.
+
+- The peak strengths are the X-ray fluorescence production cross section with full cascade (in cm^2/g). They are used to fix the relative intensity of each peak from the same atom.   
 
 ## Contributions
 Contributions are more than welcome. Please report any bug or submit any new ideas to arnaud.hemmerle@synchrotron-soleil.fr or directly in the Issues section of the GitHub.
